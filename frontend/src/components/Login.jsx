@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { Link } from "react-router-dom";
 import axios from "axios";
 
 const Login = () => {
@@ -100,9 +101,12 @@ const Login = () => {
         </form>
         <p className="mt-6 text-center text-sm text-gray-500">
           Don't have an account?{" "}
-          <span className="text-teal-500 font-medium cursor-pointer hover:text-teal-600 transition-colors">
+          <Link
+            to="/signup"
+            className="text-teal-500 font-medium cursor-pointer hover:text-teal-600 transition-colors"
+          >
             Sign up
-          </span>
+          </Link>
         </p>
       </div>
     </div>
