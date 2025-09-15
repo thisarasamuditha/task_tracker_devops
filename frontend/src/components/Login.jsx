@@ -15,7 +15,7 @@ const Login = () => {
       });
       console.log(res.data); // Login successful
     } catch (err) {
-      setError("Invalid email or password");
+      setError("Invalid username or password");
     }
   };
 
