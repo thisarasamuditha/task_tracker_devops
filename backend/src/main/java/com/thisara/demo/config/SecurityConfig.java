@@ -21,7 +21,7 @@ public class SecurityConfig {
         http.csrf(csrf -> csrf.disable())
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))  // Enable CORS
                 .authorizeHttpRequests(auth -> auth
-                    .requestMatchers("/api/auth/login", "/api/auth/register", "/login", "/register").permitAll()  // Allow public access to auth endpoints
+                    .requestMatchers("/api/auth/login", "/api/auth/signup", "/login", "/signup").permitAll()  // Allow public access to auth endpoints
                     .anyRequest().authenticated()  // Protect all other endpoints
                 )
                 .httpBasic(httpBasic -> {})  // Enable HTTP Basic for API testing
