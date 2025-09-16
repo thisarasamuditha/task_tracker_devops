@@ -27,4 +27,16 @@ public class UserService {
         }
         return Optional.empty();
     }
+
+    public boolean existsByUsername(String username) {
+        return userRepository.findByUsername(username).isPresent();
+    }
+
+    public User createUser(String username, String password) {
+        User user = new User();
+        user.setUsername(username);
+        user.setPassword(password); // later we can hash
+        return userRepository.save(user);
+    }
+
 }
