@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { Link } from "react-router-dom";
 import axios from "axios";
 
@@ -8,6 +9,7 @@ const Signup = () => {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
+  const navigate = useNavigate();
 
   const handleSignup = async (e) => {
     e.preventDefault();
@@ -36,6 +38,10 @@ const Signup = () => {
       setSuccess(
         res.data.message || res.data.success || "Account created successfully!"
       );
+
+      // Redirect to login page after successful signup
+      // You can use useNavigate from react-router-dom for redirection if needed
+      navigate("/login");
 
       // Clear form on success
       setUsername("");
