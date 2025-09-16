@@ -38,5 +38,26 @@ public class AuthController {
 
         return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Invalid credentials");
     }
+
+    @PostMapping("/signup")
+    public ResponseEntity<String> signup(@RequestBody Map<String, String> signupData){
+        String username = signupData.get("username");
+        String password = signupData.get("password");
+
+//        System.out.println(username);
+//        System.out.println(password);
+
+        // Check if username already exists
+        if (userService.existsByUsername(username)) {
+            return ResponseEntity
+                    .status(HttpStatus.CONFLICT)
+                    .body("Username already exists");
+        }
+
+        // Save user to database
+        userService.createUser(username, password);
+
+        return ResponseEntity.ok("User registered successfully");
+    }
 }
 
