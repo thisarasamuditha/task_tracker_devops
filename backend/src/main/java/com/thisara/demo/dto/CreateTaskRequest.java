@@ -13,6 +13,9 @@ public class CreateTaskRequest {
     private String description;
 
     // optional, default used if missing
+    private String status;
+
+    // optional, default used if missing
     private String priority;
 
     // optional: format "YYYY-MM-DD"
@@ -23,6 +26,8 @@ public class CreateTaskRequest {
     public void setTitle(String title) { this.title = title; }
     public String getDescription() { return description; }
     public void setDescription(String description) { this.description = description; }
+    public String getStatus() { return status; }
+    public void setStatus(String status) { this.status = status; }
     public String getPriority() { return priority; }
     public void setPriority(String priority) { this.priority = priority; }
     public LocalDate getDueDate() { return dueDate; }
