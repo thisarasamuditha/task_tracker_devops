@@ -24,10 +24,10 @@ public class Tasks {
     private String description;
 
     @Column(length = 50)
-    private String status = "PENDING";
+    private String status;
 
     @Column(length = 50)
-    private String priority = "LOW";
+    private String priority;
 
     @Column(name = "due_date")
     private LocalDate dueDate;
