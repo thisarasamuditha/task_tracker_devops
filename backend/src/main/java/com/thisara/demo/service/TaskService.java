@@ -30,10 +30,17 @@ public class TaskService {
         task.setTitle(req.getTitle());
         task.setDescription(req.getDescription());
 
-        // default status & priority if missing
-        task.setStatus(req.getPriority() == null ? "PENDING" : "PENDING"); // status always start PENDING
+        // Set status from request or default to PENDING
+        String status = req.getStatus() == null || req.getStatus().isBlank() ? "PENDING" : req.getStatus().toUpperCase();
+        // Validate status: allow PENDING, IN_PROGRESS, COMPLETED
+        if (!status.equals("PENDING") && !status.equals("IN_PROGRESS") && !status.equals("COMPLETED")) {
+            status = "PENDING";
+        }
+        task.setStatus(status);
+        
+        // Set priority from request or default to LOW
         String priority = req.getPriority() == null || req.getPriority().isBlank() ? "LOW" : req.getPriority().toUpperCase();
-        // simple validation: allow LOW, MEDIUM, HIGH
+        // Validate priority: allow LOW, MEDIUM, HIGH
         if (!priority.equals("LOW") && !priority.equals("MEDIUM") && !priority.equals("HIGH")) {
             priority = "LOW";
         }
