@@ -14,7 +14,7 @@ public class SecurityConfig {
             @Override
             public void addCorsMappings(CorsRegistry registry) {
                 registry.addMapping("/**") // Allow all endpoints
-                        .allowedOrigins("http://localhost:5173") // Allow frontend origin
+                        .allowedOrigins("http://localhost:5173", "http://localhost:9000") // Allow both dev and container frontend
                         .allowedMethods("GET", "POST", "PUT", "DELETE") // Allow these HTTP methods
                         .allowedHeaders("*") // Allow all headers
                         .allowCredentials(true); // Allow cookies/auth if needed
