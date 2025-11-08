@@ -34,19 +34,27 @@ const Signup = () => {
       });
       console.log(res.data);
 
+      // Store user data in localStorage
+      if (res.data.user && res.data.user.userId) {
+        localStorage.setItem("userId", res.data.user.userId);
+        localStorage.setItem("username", res.data.user.username);
+        localStorage.setItem("token", "authenticated");
+      }
+
       // Use success message from backend response
       setSuccess(
         res.data.message || res.data.success || "Account created successfully!"
       );
 
-      // Redirect to login page after successful signup
-      // You can use useNavigate from react-router-dom for redirection if needed
-      navigate("/login");
-
       // Clear form on success
       setUsername("");
       setPassword("");
       setConfirmPassword("");
+
+      // Navigate to dashboard after successful signup
+      setTimeout(() => {
+        navigate("/dashboard");
+      }, 500);
 
       // TODO: Handle successful signup (redirect to login or auto-login)
     } catch (err) {

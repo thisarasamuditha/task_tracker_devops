@@ -1,31 +1,41 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import {
-  createTask,
-  getTasksByUser,
-  deleteTask,
-  updateTask,
-} from "../api/tasks";
+import { createTask, getTasksByUser, deleteTask } from "../api/tasks";
 import AddTaskModal from "./AddTaskModal";
 
 function Dashboard() {
   const [tasks, setTasks] = useState([]);
   const [showAddModal, setShowAddModal] = useState(false);
-  const [editingTask, setEditingTask] = useState(null);
   const [activeTab, setActiveTab] = useState("all");
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
 
-  // Fetch tasks when component mounts
+  // Check authentication and fetch tasks when component mounts
   useEffect(() => {
+    const userId = localStorage.getItem("userId");
+    console.log("Dashboard mounted, userId:", userId);
+
+    if (!userId) {
+      // No user logged in, redirect to login
+      console.log("No userId found, redirecting to login");
+      navigate("/login");
+      return;
+    }
+
+    console.log("User authenticated, fetching tasks");
     fetchTasks();
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Only run once on mount
 
   const fetchTasks = async () => {
     try {
       setLoading(true);
-      const userId = localStorage.getItem("userId") || 1; // TODO: Get from auth
+      const userId = localStorage.getItem("userId");
+      if (!userId) return;
+
+      console.log("Fetching tasks for userId:", userId);
       const data = await getTasksByUser(userId);
+      console.log("Tasks fetched:", data);
       setTasks(data);
     } catch (error) {
       console.error("Error fetching tasks:", error);
@@ -44,52 +54,21 @@ function Dashboard() {
     }
   };
 
-  const handleEditTask = (task) => {
-    setEditingTask(task);
-    setShowAddModal(true);
-  };
-
-  const handleUpdateTaskViaModal = async (taskId, taskData) => {
-    try {
-      const userId = localStorage.getItem("userId") || 1;
-      const updatedTask = await updateTask(userId, taskId, taskData);
-      setTasks(
-        tasks.map((task) => (task.taskId === taskId ? updatedTask : task))
-      );
-      setShowAddModal(false);
-      setEditingTask(null);
-    } catch (error) {
-      throw error;
-    }
-  };
-
   const handleDeleteTask = async (taskId) => {
     if (!window.confirm("Are you sure you want to delete this task?")) return;
 
     try {
-      const userId = localStorage.getItem("userId") || 1;
-      await deleteTask(userId, taskId);
+      await deleteTask(taskId);
       setTasks(tasks.filter((task) => task.taskId !== taskId));
     } catch (error) {
       alert("Failed to delete task");
     }
   };
 
-  const handleUpdateTask = async (taskId, updates) => {
-    try {
-      const userId = localStorage.getItem("userId") || 1;
-      const updatedTask = await updateTask(userId, taskId, updates);
-      setTasks(
-        tasks.map((task) => (task.taskId === taskId ? updatedTask : task))
-      );
-    } catch (error) {
-      alert("Failed to update task");
-    }
-  };
-
   const handleLogout = () => {
     localStorage.removeItem("token");
     localStorage.removeItem("userId");
+    localStorage.removeItem("username");
     navigate("/login");
   };
 
@@ -138,8 +117,14 @@ function Dashboard() {
                 />
               </svg>
             </div>
-            <h3 className="font-semibold text-text">John Doe</h3>
-            <p className="text-sm text-muted">john@example.com</p>
+            <h3 className="font-semibold text-text">
+              {localStorage.getItem("username") || "User"}
+            </h3>
+            <p className="text-sm text-muted">
+              {localStorage.getItem("username")
+                ? `@${localStorage.getItem("username")}`
+                : "user@example.com"}
+            </p>
           </div>
 
           {/* Navigation Menu */}
@@ -277,11 +262,8 @@ function Dashboard() {
               </p>
             </div>
             <button
-              onClick={() => {
-                setEditingTask(null);
-                setShowAddModal(true);
-              }}
-              className="flex items-center gap-2 px-6 py-3 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors shadow-md"
+              onClick={() => setShowAddModal(true)}
+              className="flex items-center px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors shadow-md"
             >
               <svg
                 className="w-5 h-5 mr-2"
@@ -428,15 +410,8 @@ function Dashboard() {
                           <h3 className="font-semibold text-text">
                             {task.title}
                           </h3>
-                          {/* Status Dropdown */}
-                          <select
-                            value={task.status}
-                            onChange={(e) =>
-                              handleUpdateTask(task.taskId, {
-                                status: e.target.value,
-                              })
-                            }
-                            className={`px-3 py-1 text-xs font-medium rounded-full border-none cursor-pointer ${
+                          <span
+                            className={`px-3 py-1 text-xs font-medium rounded-full ${
                               task.status === "PENDING"
                                 ? "bg-pending/20 text-pending"
                                 : task.status === "IN_PROGRESS"
@@ -446,19 +421,13 @@ function Dashboard() {
                                 : "bg-muted/20 text-muted"
                             }`}
                           >
-                            <option value="PENDING">Pending</option>
-                            <option value="IN_PROGRESS">In Progress</option>
-                            <option value="COMPLETED">Completed</option>
-                          </select>
-                          {/* Priority Dropdown */}
-                          <select
-                            value={task.priority}
-                            onChange={(e) =>
-                              handleUpdateTask(task.taskId, {
-                                priority: e.target.value,
-                              })
-                            }
-                            className={`px-3 py-1 text-xs font-medium rounded-full border-none cursor-pointer ${
+                            {task.status === "IN_PROGRESS"
+                              ? "In Progress"
+                              : task.status.charAt(0) +
+                                task.status.slice(1).toLowerCase()}
+                          </span>
+                          <span
+                            className={`px-3 py-1 text-xs font-medium rounded-full ${
                               task.priority === "HIGH"
                                 ? "bg-danger/20 text-danger"
                                 : task.priority === "MEDIUM"
@@ -466,10 +435,9 @@ function Dashboard() {
                                 : "bg-accent/20 text-accent"
                             }`}
                           >
-                            <option value="LOW">Low</option>
-                            <option value="MEDIUM">Medium</option>
-                            <option value="HIGH">High</option>
-                          </select>
+                            {task.priority.charAt(0) +
+                              task.priority.slice(1).toLowerCase()}
+                          </span>
                         </div>
                         <p className="text-sm text-muted mb-3">
                           {task.description || "No description"}
@@ -495,9 +463,10 @@ function Dashboard() {
                       </div>
                       <div className="flex gap-2 ml-4">
                         <button
-                          onClick={() => handleEditTask(task)}
+                          onClick={() => {
+                            /* TODO: Add edit functionality */
+                          }}
                           className="p-2 text-primary hover:bg-primary/10 rounded-lg transition-colors"
-                          title="Edit task"
                         >
                           <svg
                             className="w-5 h-5"
@@ -516,7 +485,6 @@ function Dashboard() {
                         <button
                           onClick={() => handleDeleteTask(task.taskId)}
                           className="p-2 text-danger hover:bg-danger/10 rounded-lg transition-colors"
-                          title="Delete task"
                         >
                           <svg
                             className="w-5 h-5"
@@ -568,13 +536,8 @@ function Dashboard() {
       {/* Add Task Modal */}
       <AddTaskModal
         isOpen={showAddModal}
-        onClose={() => {
-          setShowAddModal(false);
-          setEditingTask(null);
-        }}
+        onClose={() => setShowAddModal(false)}
         onTaskCreated={handleCreateTask}
-        onTaskUpdated={handleUpdateTaskViaModal}
-        editTask={editingTask}
       />
     </div>
   );

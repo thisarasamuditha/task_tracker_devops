@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import axios from "axios";
 
 const Login = () => {
@@ -7,6 +7,7 @@ const Login = () => {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
+  const navigate = useNavigate();
 
   const handleLogin = async (e) => {
     e.preventDefault();
@@ -20,10 +21,27 @@ const Login = () => {
       });
       console.log(res.data);
 
+      // Store user data in localStorage
+      if (res.data.user && res.data.user.userId) {
+        console.log("Storing user data:", res.data.user);
+        localStorage.setItem("userId", res.data.user.userId);
+        localStorage.setItem("username", res.data.user.username);
+        localStorage.setItem("token", "authenticated");
+        console.log("Stored userId:", localStorage.getItem("userId"));
+        console.log("Stored username:", localStorage.getItem("username"));
+      } else {
+        console.error("User data not found in response:", res.data);
+      }
+
       // Use success message from backend response
       setSuccess(res.data.message || res.data.success || "Login successful!");
 
-      // TODO: Handle successful login (store token, redirect, etc.)
+      // Navigate to dashboard after successful login
+      console.log("Navigating to dashboard in 500ms");
+      setTimeout(() => {
+        console.log("Executing navigation to /dashboard");
+        navigate("/dashboard");
+      }, 500);
     } catch (err) {
       console.error("Login error details:", err);
       console.error("Error response:", err.response);
