@@ -1,11 +1,19 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { createTask, getTasksByUser, deleteTask } from "../api/tasks";
+import {
+  createTask,
+  getTasksByUser,
+  deleteTask,
+  updateTask,
+} from "../api/tasks";
 import AddTaskModal from "./AddTaskModal";
+import EditTaskModal from "./EditTaskModal";
 
 function Dashboard() {
   const [tasks, setTasks] = useState([]);
   const [showAddModal, setShowAddModal] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [taskBeingEdited, setTaskBeingEdited] = useState(null);
   const [activeTab, setActiveTab] = useState("all");
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
@@ -58,11 +66,28 @@ function Dashboard() {
     if (!window.confirm("Are you sure you want to delete this task?")) return;
 
     try {
-      await deleteTask(taskId);
+      const userId = localStorage.getItem("userId");
+      await deleteTask(userId, taskId);
       setTasks(tasks.filter((task) => task.taskId !== taskId));
     } catch (error) {
       alert("Failed to delete task");
     }
+  };
+
+  const openEdit = (task) => {
+    setTaskBeingEdited(task);
+    setShowEditModal(true);
+  };
+
+  const handleSaveEdits = async (updatedFields) => {
+    const userId = localStorage.getItem("userId");
+    const taskId = taskBeingEdited.taskId;
+    // Call API
+    const updated = await updateTask(userId, taskId, updatedFields);
+    // Update list locally
+    setTasks((prev) =>
+      prev.map((t) => (t.taskId === taskId ? { ...t, ...updated } : t))
+    );
   };
 
   const handleLogout = () => {
@@ -463,9 +488,7 @@ function Dashboard() {
                       </div>
                       <div className="flex gap-2 ml-4">
                         <button
-                          onClick={() => {
-                            /* TODO: Add edit functionality */
-                          }}
+                          onClick={() => openEdit(task)}
                           className="p-2 text-primary hover:bg-primary/10 rounded-lg transition-colors"
                         >
                           <svg
@@ -538,6 +561,12 @@ function Dashboard() {
         isOpen={showAddModal}
         onClose={() => setShowAddModal(false)}
         onTaskCreated={handleCreateTask}
+      />
+      <EditTaskModal
+        isOpen={showEditModal}
+        onClose={() => setShowEditModal(false)}
+        task={taskBeingEdited}
+        onSave={handleSaveEdits}
       />
     </div>
   );

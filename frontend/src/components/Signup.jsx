@@ -3,6 +3,11 @@ import { useNavigate } from "react-router-dom";
 import { Link } from "react-router-dom";
 import axios from "axios";
 
+// Centralized API base URL (falls back to localhost backend if env not set)
+// Define VITE_API_BASE_URL in a .env file for flexibility (e.g., http://localhost:8080/api)
+const API_BASE_URL =
+  import.meta.env.VITE_API_BASE_URL || "http://localhost:8080/api";
+
 const Signup = () => {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
@@ -28,7 +33,8 @@ const Signup = () => {
     }
 
     try {
-      const res = await axios.post("/api/auth/signup", {
+      // Use consistent base URL (previous relative path caused 404 from frontend dev server)
+      const res = await axios.post(`${API_BASE_URL}/auth/signup`, {
         username,
         password,
       });
