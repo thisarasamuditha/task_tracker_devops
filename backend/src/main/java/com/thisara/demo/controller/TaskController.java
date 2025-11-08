@@ -7,6 +7,7 @@ import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+
 import java.util.List;
 
 @RestController
@@ -33,52 +34,24 @@ public class TaskController {
         }
     }
 
-    @PutMapping("/users/{userId}/tasks/{taskId}")
-    public ResponseEntity<?> updateTaskForUser(
-            @PathVariable("userId") Long userId,
-            @PathVariable("taskId") Long taskId,
-            @RequestBody CreateTaskRequest request) {
-        try {
-            Tasks updated = taskService.updateTaskForUser(userId, taskId, request);
-            return ResponseEntity.ok(updated);
-        } catch (IllegalArgumentException e) {
-            return ResponseEntity.badRequest().body(e.getMessage());
-        } catch (Exception e) {
-            return ResponseEntity.status(500).body("Failed to update task: " + e.getMessage());
-        }
-    }
-
-    @DeleteMapping("/users/{userId}/tasks/{taskId}")
-    public ResponseEntity<?> deleteTaskForUser(
-            @PathVariable("userId") Long userId,
-            @PathVariable("taskId") Long taskId) {
-        try {
-            taskService.deleteTaskForUser(userId, taskId);
-            return ResponseEntity.noContent().build();
-        } catch (IllegalArgumentException e) {
-            return ResponseEntity.badRequest().body(e.getMessage());
-        } catch (Exception e) {
-            return ResponseEntity.status(500).body("Failed to delete task: " + e.getMessage());
-        }
-    }
-
     @GetMapping("/users/{userId}/tasks")
-    public ResponseEntity<?> listTasksForUser(@PathVariable("userId") Long userId) {
+    public ResponseEntity<?> getTasksForUser(@PathVariable("userId") Long userId) {
         try {
             List<Tasks> tasks = taskService.getTasksForUser(userId);
             return ResponseEntity.ok(tasks);
         } catch (IllegalArgumentException e) {
             return ResponseEntity.badRequest().body(e.getMessage());
         } catch (Exception e) {
-            return ResponseEntity.status(500).body("Failed to list tasks: " + e.getMessage());
+            return ResponseEntity.status(500).body("Failed to fetch tasks: " + e.getMessage());
         }
     }
 
     @GetMapping("/users/{userId}/tasks/{taskId}")
-    public ResponseEntity<?> getTaskForUser(@PathVariable("userId") Long userId,
-                                            @PathVariable("taskId") Long taskId) {
+    public ResponseEntity<?> getTaskById(
+            @PathVariable("userId") Long userId,
+            @PathVariable("taskId") Long taskId) {
         try {
-            Tasks task = taskService.getTaskForUser(userId, taskId);
+            Tasks task = taskService.getTaskById(userId, taskId);
             return ResponseEntity.ok(task);
         } catch (IllegalArgumentException e) {
             return ResponseEntity.badRequest().body(e.getMessage());
@@ -86,4 +59,6 @@ public class TaskController {
             return ResponseEntity.status(500).body("Failed to fetch task: " + e.getMessage());
         }
     }
+
+    // ... other endpoints ...
 }
