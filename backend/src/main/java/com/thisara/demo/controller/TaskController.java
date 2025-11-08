@@ -7,7 +7,6 @@ import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-
 import java.util.List;
 
 @RestController
@@ -35,30 +34,37 @@ public class TaskController {
     }
 
     @GetMapping("/users/{userId}/tasks")
-    public ResponseEntity<?> getTasksForUser(@PathVariable("userId") Long userId) {
+    public ResponseEntity<List<Tasks>> getTasksForUser(@PathVariable("userId") Long userId) {
+        List<Tasks> tasks = taskService.getTasksByUser(userId);
+        return ResponseEntity.ok(tasks);
+    }
+
+    @PutMapping("/users/{userId}/tasks/{taskId}")
+    public ResponseEntity<?> updateTaskForUser(
+            @PathVariable("userId") Long userId,
+            @PathVariable("taskId") Long taskId,
+            @RequestBody CreateTaskRequest request) {
         try {
-            List<Tasks> tasks = taskService.getTasksForUser(userId);
-            return ResponseEntity.ok(tasks);
+            Tasks updated = taskService.updateTaskForUser(userId, taskId, request);
+            return ResponseEntity.ok(updated);
         } catch (IllegalArgumentException e) {
             return ResponseEntity.badRequest().body(e.getMessage());
         } catch (Exception e) {
-            return ResponseEntity.status(500).body("Failed to fetch tasks: " + e.getMessage());
+            return ResponseEntity.status(500).body("Failed to update task: " + e.getMessage());
         }
     }
 
-    @GetMapping("/users/{userId}/tasks/{taskId}")
-    public ResponseEntity<?> getTaskById(
+    @DeleteMapping("/users/{userId}/tasks/{taskId}")
+    public ResponseEntity<?> deleteTaskForUser(
             @PathVariable("userId") Long userId,
             @PathVariable("taskId") Long taskId) {
         try {
-            Tasks task = taskService.getTaskById(userId, taskId);
-            return ResponseEntity.ok(task);
+            taskService.deleteTaskForUser(userId, taskId);
+            return ResponseEntity.noContent().build();
         } catch (IllegalArgumentException e) {
             return ResponseEntity.badRequest().body(e.getMessage());
         } catch (Exception e) {
-            return ResponseEntity.status(500).body("Failed to fetch task: " + e.getMessage());
+            return ResponseEntity.status(500).body("Failed to delete task: " + e.getMessage());
         }
     }
-
-    // ... other endpoints ...
 }
