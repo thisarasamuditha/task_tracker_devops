@@ -1,5 +1,38 @@
-FROM openjdk:17-jdk-alpine
+# ---------- Backend (Spring Boot) Dockerfile ----------
+# Multi-stage build: Maven builder + slim JRE runtime
+
+# 1) Build stage
+FROM maven:3.9.11-eclipse-temurin-17 AS build
+WORKDIR /workspace
+
+# Copy pom and resolve deps first to leverage Docker layer cache
+COPY pom.xml ./
+# Skip offline mode which can be flaky; just resolve dependencies during build
+# RUN mvn -B -q -DskipTests dependency:go-offline
+
+# Copy source and build (Maven will download deps during this phase)
+COPY src ./src
+RUN mvn -B -DskipTests clean package -Dmaven.wagon.http.retryHandler.count=3
+
+# 2) Runtime stage
+FROM eclipse-temurin:17-jre AS runtime
 WORKDIR /app
-COPY target/*.jar app.jar
+
+# Create non-root user
+RUN useradd -m -u 10001 appuser
+
+# Copy built jar
+COPY --from=build /workspace/target/*.jar /app/app.jar
+
+# Runtime configuration
+ENV JAVA_OPTS=""
+ENV SERVER_PORT=8080
 EXPOSE 8080
-ENTRYPOINT ["java", "-jar", "app.jar"]
+
+# Healthcheck (optional; works when curl is present)
+# RUN apt-get update && apt-get install -y curl && rm -rf /var/lib/apt/lists/*
+# HEALTHCHECK --interval=30s --timeout=3s CMD curl -f http://localhost:${SERVER_PORT}/actuator/health || exit 1
+
+USER appuser
+ENTRYPOINT ["sh", "-c", "java $JAVA_OPTS -jar /app/app.jar"]
+

@@ -1,0 +1,12 @@
+# Backend Docker build context ignores
+.git
+.gitignore
+.target
+/target
+**/target
+**/.idea
+**/.vscode
+*.iml
+node_modules
+Dockerfile*
+README.md

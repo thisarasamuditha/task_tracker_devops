@@ -1,0 +1,9 @@
+# Frontend Docker build context ignores
+.git
+.gitignore
+node_modules
+/dist
+**/.idea
+**/.vscode
+Dockerfile*
+README.md
