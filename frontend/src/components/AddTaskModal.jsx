@@ -1,6 +1,12 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
-function AddTaskModal({ isOpen, onClose, onTaskCreated }) {
+function AddTaskModal({
+  isOpen,
+  onClose,
+  onTaskCreated,
+  onTaskUpdated,
+  editTask,
+}) {
   const [formData, setFormData] = useState({
     userId: 1, // TODO: Get from auth context
     title: "",
@@ -11,6 +17,30 @@ function AddTaskModal({ isOpen, onClose, onTaskCreated }) {
   });
   const [error, setError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Populate form when editing
+  useEffect(() => {
+    if (editTask) {
+      setFormData({
+        userId: editTask.userId || 1,
+        title: editTask.title || "",
+        description: editTask.description || "",
+        status: editTask.status || "PENDING",
+        priority: editTask.priority || "LOW",
+        dueDate: editTask.dueDate || "",
+      });
+    } else {
+      // Reset form for create mode
+      setFormData({
+        userId: 1,
+        title: "",
+        description: "",
+        status: "PENDING",
+        priority: "LOW",
+        dueDate: "",
+      });
+    }
+  }, [editTask, isOpen]);
 
   const handleChange = (e) => {
     setFormData({
@@ -25,8 +55,16 @@ function AddTaskModal({ isOpen, onClose, onTaskCreated }) {
     setIsSubmitting(true);
 
     try {
-      console.log("Submitting task data:", formData); // Debug log
-      await onTaskCreated(formData);
+      if (editTask) {
+        // Update existing task
+        console.log("Updating task:", editTask.taskId, formData);
+        await onTaskUpdated(editTask.taskId, formData);
+      } else {
+        // Create new task
+        console.log("Creating new task:", formData);
+        await onTaskCreated(formData);
+      }
+
       // Reset form
       setFormData({
         userId: 1,
@@ -38,13 +76,13 @@ function AddTaskModal({ isOpen, onClose, onTaskCreated }) {
       });
       onClose();
     } catch (err) {
-      console.error("Error creating task:", err); // Debug log
-      console.error("Error response:", err.response); // Debug log
+      console.error(`Error ${editTask ? "updating" : "creating"} task:`, err);
+      console.error("Error response:", err.response);
       const errorMessage =
         err.response?.data?.message ||
         err.response?.data ||
         err.message ||
-        "Failed to create task";
+        `Failed to ${editTask ? "update" : "create"} task`;
       setError(errorMessage);
     } finally {
       setIsSubmitting(false);
@@ -57,7 +95,9 @@ function AddTaskModal({ isOpen, onClose, onTaskCreated }) {
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
       <div className="bg-white rounded-lg p-6 w-full max-w-md mx-4">
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-xl font-semibold text-text">Create New Task</h2>
+          <h2 className="text-xl font-semibold text-text">
+            {editTask ? "Edit Task" : "Create New Task"}
+          </h2>
           <button
             onClick={onClose}
             className="text-muted hover:text-text transition-colors"
@@ -174,7 +214,13 @@ function AddTaskModal({ isOpen, onClose, onTaskCreated }) {
               disabled={isSubmitting}
               className="flex-1 px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {isSubmitting ? "Creating..." : "Create Task"}
+              {isSubmitting
+                ? editTask
+                  ? "Updating..."
+                  : "Creating..."
+                : editTask
+                ? "Update Task"
+                : "Create Task"}
             </button>
           </div>
         </form>
