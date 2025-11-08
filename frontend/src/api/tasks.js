@@ -45,35 +45,71 @@ export const createTask = async (taskData) => {
   }
 };
 
-// Get all tasks for a user
-export const getTasksByUser = async (userId) => {
+// Update an existing task (status, priority, dueDate)
+export const updateTask = async (userId, taskId, taskData) => {
   try {
-    const response = await axios.get(`${API_URL}/user/${userId}`);
-    return response.data;
-  } catch (error) {
-    console.error("Error fetching tasks:", error);
-    throw error;
-  }
-};
+    console.log(`Updating task ${taskId} for user ${userId}:`, taskData);
 
-// Update a task
-export const updateTask = async (taskId, taskData) => {
-  try {
-    const response = await axios.put(`${API_URL}/${taskId}`, taskData);
+    // Only send fields that need updating
+    const payload = {};
+    if (taskData.status !== undefined) payload.status = taskData.status;
+    if (taskData.priority !== undefined) payload.priority = taskData.priority;
+    if (taskData.dueDate !== undefined) payload.dueDate = taskData.dueDate;
+    if (taskData.title !== undefined) payload.title = taskData.title;
+    if (taskData.description !== undefined)
+      payload.description = taskData.description;
+
+    console.log("Update payload:", payload);
+
+    const response = await axios.put(
+      `${API_BASE_URL}/users/${userId}/tasks/${taskId}`,
+      payload,
+      {
+        headers: {
+          "Content-Type": "application/json",
+        },
+      }
+    );
+    console.log("Task updated successfully:", response.data);
     return response.data;
   } catch (error) {
     console.error("Error updating task:", error);
+    if (error.code === "ERR_NETWORK") {
+      throw new Error(
+        "Cannot connect to server. Please check if backend is running."
+      );
+    }
     throw error;
   }
 };
 
 // Delete a task
-export const deleteTask = async (taskId) => {
+export const deleteTask = async (userId, taskId) => {
   try {
-    await axios.delete(`${API_URL}/${taskId}`);
-    return true;
+    console.log(`Deleting task ${taskId} for user ${userId}`);
+    const response = await axios.delete(
+      `${API_BASE_URL}/users/${userId}/tasks/${taskId}`
+    );
+    console.log("Task deleted successfully");
+    return response.data;
   } catch (error) {
     console.error("Error deleting task:", error);
+    if (error.code === "ERR_NETWORK") {
+      throw new Error(
+        "Cannot connect to server. Please check if backend is running."
+      );
+    }
+    throw error;
+  }
+};
+
+// Get all tasks for a user
+export const getTasksByUser = async (userId) => {
+  try {
+    const response = await axios.get(`${API_BASE_URL}/users/${userId}/tasks`);
+    return response.data;
+  } catch (error) {
+    console.error("Error fetching tasks:", error);
     throw error;
   }
 };
