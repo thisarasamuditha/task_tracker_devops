@@ -16,6 +16,7 @@ services:
 
   backend:
     build: ./backend
+    image: thisarasamuditha/task_tracker_backend:latest
     depends_on:
       db:
         condition: service_healthy
@@ -37,6 +38,7 @@ services:
       args:
         # Use relative /api URL so nginx proxy handles routing
         VITE_API_BASE_URL: /api
+    image: thisarasamuditha/task_tracker_frontend:latest
     depends_on:
       - backend
     ports:
