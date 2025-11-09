@@ -3,10 +3,9 @@ import { useNavigate } from "react-router-dom";
 import { Link } from "react-router-dom";
 import axios from "axios";
 
-// Centralized API base URL (falls back to localhost backend if env not set)
-// Define VITE_API_BASE_URL in a .env file for flexibility (e.g., http://localhost:8080/api)
-const API_BASE_URL =
-  import.meta.env.VITE_API_BASE_URL || "http://localhost:8080/api";
+// Centralized API base URL (falls back to relative /api for Docker nginx proxy)
+// Define VITE_API_BASE_URL in .env for local dev (e.g., http://localhost:8000/api)
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "/api";
 
 const Signup = () => {
   const [username, setUsername] = useState("");
