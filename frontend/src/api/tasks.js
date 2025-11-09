@@ -1,6 +1,8 @@
 import axios from "axios";
 
-const API_BASE_URL = "http://localhost:8080/api";
+// Use environment variable or fall back to relative /api (for Docker nginx proxy)
+// For local dev, set VITE_API_BASE_URL=http://localhost:8000/api in .env
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "/api";
 
 // Create a new task
 export const createTask = async (taskData) => {
@@ -37,7 +39,7 @@ export const createTask = async (taskData) => {
 
     if (error.code === "ERR_NETWORK") {
       throw new Error(
-        "Cannot connect to server. Please check if backend is running on http://localhost:8080"
+        "Cannot connect to server. Please check if backend is running."
       );
     }
 
