@@ -14,7 +14,8 @@ COPY . .
 
 # Set build-time environment variable for API base URL
 # This gets embedded into the built JavaScript bundle
-ARG VITE_API_BASE_URL=http://localhost:8080/api
+# Use relative /api for Docker (nginx proxy), localhost for local dev
+ARG VITE_API_BASE_URL=/api
 ENV VITE_API_BASE_URL=$VITE_API_BASE_URL
 
 # Build static assets
