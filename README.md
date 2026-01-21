@@ -1,314 +1,672 @@
-# Task Tracker - Full Stack Application with CI/CD
+# DevOps Project: React + Spring Boot CI/CD Pipeline
 
-A modern full-stack task management application built with Spring Boot backend and React frontend, featuring a complete CI/CD pipeline using Jenkins, Docker, and DockerHub.
-
-## 🏗️ Architecture
-
-```
-Developer → GitHub → Jenkins (WSL) → Docker Build → DockerHub → Deployment
-```
-
-## 🚀 Tech Stack
-
-### Backend
-
-- **Framework**: Spring Boot 3.5.5
-- **Language**: Java 17
-- **Database**: MySQL 8.0
-- **Build Tool**: Maven
-- **Port**: 8000
-
-### Frontend
-
-- **Framework**: React 19
-- **Build Tool**: Vite
-- **Language**: JavaScript
-- **Styling**: Tailwind CSS
-- **Port**: 9000 (production via Nginx)
-
-### DevOps
-
-- **CI/CD**: Jenkins
-- **Containerization**: Docker
-- **Registry**: Docker Hub
-- **Orchestration**: Docker Compose
-
-## 📋 Features
-
-- ✅ User authentication (Login/Signup)
-- ✅ Create, Read, Update, Delete tasks
-- ✅ Task status management (Pending, In Progress, Completed)
-- ✅ Task priority levels (Low, Medium, High)
-- ✅ Due date tracking
-- ✅ Responsive UI design
-- ✅ RESTful API backend
-- ✅ Dockerized application
-- ✅ Automated CI/CD pipeline
-
-## 🔧 Quick Start
-
-### Prerequisites
-
-- Docker & Docker Compose
-- Node.js 22+ (for local development)
-- Java 17+ (for local development)
-- Maven 3.6+ (for local development)
-
-### Running with Docker Compose
-
-```bash
-# Clone the repository
-git clone https://github.com/thisarasamuditha/task_tracker_devops.git
-cd task_tracker_devops/version_2.0
-
-# Start all services
-docker-compose up -d
-
-# Check container status
-docker-compose ps
-
-# View logs
-docker-compose logs -f
-```
-
-### Accessing the Application
-
-- **Frontend**: http://localhost:9000
-- **Backend API**: http://localhost:8000
-- **Database**: localhost:3307
-
-### Default Database Credentials
-
-- **Username**: root
-- **Password**: Tt51714183.
-- **Database**: task_tracker
-
-## 🛠️ Local Development
-
-### Backend Development
-
-```bash
-cd backend
-
-# Build the project
-mvn clean package
-
-# Run tests
-mvn test
-
-# Run the application
-mvn spring-boot:run
-```
-
-Backend will be available at: http://localhost:8000
-
-### Frontend Development
-
-```bash
-cd frontend
-
-# Install dependencies
-npm install
-
-# Run development server
-npm run dev
-
-# Build for production
-npm run build
-```
-
-Frontend will be available at: http://localhost:5173 (Vite dev server)
-
-## 🐳 Docker Images
-
-Pre-built Docker images are available on Docker Hub:
-
-- **Backend**: `thisarasamuditha/task_tracker_backend:latest`
-- **Frontend**: `thisarasamuditha/task_tracker_frontend:latest`
-
-```bash
-# Pull images
-docker pull thisarasamuditha/task_tracker_backend:latest
-docker pull thisarasamuditha/task_tracker_frontend:latest
-```
-
-## 🔄 CI/CD Pipeline
-
-### Pipeline Stages
-
-1. **Checkout** - Clone code from GitHub
-2. **Environment Setup** - Verify tools and dependencies
-3. **Build Backend** - Compile Spring Boot application
-4. **Test Backend** - Run JUnit tests
-5. **Build Frontend** - Build React production bundle
-6. **Build Docker Images** - Create Docker images (parallel)
-7. **Security Scan** - Scan for vulnerabilities using Trivy
-8. **Push to Docker Hub** - Publish images to registry
-9. **Deploy** - Start containers with docker-compose
-10. **Health Check** - Verify application is running
-
-### Setting Up Jenkins
-
-Detailed instructions available in [JENKINS_SETUP.md](./JENKINS_SETUP.md)
-
-**Quick Setup:**
-
-```bash
-# Install Jenkins on WSL
-sudo apt update
-sudo apt install openjdk-17-jdk -y
-curl -fsSL https://pkg.jenkins.io/debian-stable/jenkins.io-2023.key | sudo tee \
-  /usr/share/keyrings/jenkins-keyring.asc > /dev/null
-echo deb [signed-by=/usr/share/keyrings/jenkins-keyring.asc] \
-  https://pkg.jenkins.io/debian-stable binary/ | sudo tee \
-  /etc/apt/sources.list.d/jenkins.list > /dev/null
-sudo apt update
-sudo apt install jenkins -y
-sudo systemctl start jenkins
-
-# Access Jenkins at http://localhost:8080
-```
-
-### Triggering Builds
-
-**Automatic**: Push to GitHub triggers webhook → Jenkins starts pipeline
-
-**Manual**: Click "Build Now" in Jenkins dashboard
-
-## 📁 Project Structure
-
-```
-version_2.0/
-├── backend/                 # Spring Boot backend
-│   ├── src/
-│   │   ├── main/
-│   │   │   ├── java/       # Java source code
-│   │   │   └── resources/  # Application properties
-│   │   └── test/           # Unit tests
-│   ├── Dockerfile          # Backend Docker configuration
-│   └── pom.xml            # Maven configuration
-├── frontend/               # React frontend
-│   ├── src/
-│   │   ├── api/           # API integration
-│   │   ├── assets/        # Static assets
-│   │   └── components/    # React components
-│   ├── Dockerfile         # Frontend Docker configuration
-│   ├── nginx.conf         # Nginx configuration
-│   └── package.json       # npm configuration
-├── docker-compose.yml     # Multi-container orchestration
-├── Jenkinsfile           # CI/CD pipeline definition
-├── JENKINS_SETUP.md      # Detailed Jenkins setup guide
-└── README.md             # This file
-```
-
-## 🔐 Security
-
-- Passwords stored using BCrypt hashing
-- Environment variables for sensitive data
-- Docker image vulnerability scanning with Trivy
-- Nginx proxy for API requests
-- CORS configuration for cross-origin requests
-
-## 🧪 Testing
-
-### Backend Tests
-
-```bash
-cd backend
-mvn test
-```
-
-Test reports available in: `backend/target/surefire-reports/`
-
-### Frontend Tests
-
-```bash
-cd frontend
-npm run test
-```
-
-## 📊 API Endpoints
-
-### Authentication
-
-- `POST /api/auth/signup` - Register new user
-- `POST /api/auth/login` - User login
-
-### Tasks
-
-- `GET /api/users/{userId}/tasks` - Get all tasks
-- `POST /api/users/{userId}/tasks` - Create new task
-- `PUT /api/users/{userId}/tasks/{taskId}` - Update task
-- `DELETE /api/users/{userId}/tasks/{taskId}` - Delete task
-
-## 🐛 Troubleshooting
-
-### Common Issues
-
-**Port Already in Use**
-
-```bash
-# Stop existing containers
-docker-compose down
-
-# Check what's using the port
-lsof -i :8000  # Backend
-lsof -i :9000  # Frontend
-```
-
-**Database Connection Error**
-
-```bash
-# Wait for database to be healthy
-docker-compose ps
-
-# Check database logs
-docker-compose logs db
-```
-
-**Jenkins Build Fails**
-
-```bash
-# Check Jenkins logs
-sudo journalctl -u jenkins -f
-
-# Verify Docker permissions
-sudo usermod -aG docker jenkins
-sudo systemctl restart jenkins
-```
-
-## 📚 Documentation
-
-- [Jenkins Setup Guide](./JENKINS_SETUP.md) - Complete Jenkins installation and configuration
-- [Docker Setup Guide](./DOCKER_SETUP.md) - Docker configuration details
-- [API Documentation](./API_DOCS.md) - API endpoint specifications
-
-## 🤝 Contributing
-
-1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
-
-## 📝 License
-
-This project is licensed under the MIT License.
-
-## 👤 Author
-
-**Thisara Samuditha**
-
-- GitHub: [@thisarasamuditha](https://github.com/thisarasamuditha)
-- Docker Hub: [thisarasamuditha](https://hub.docker.com/u/thisarasamuditha)
-
-## 🙏 Acknowledgments
-
-- Spring Boot Documentation
-- React Documentation
-- Jenkins Documentation
-- Docker Documentation
+Complete DevOps implementation for deploying a React frontend and Spring Boot backend application using Jenkins, Docker, Terraform, and Ansible on AWS EC2.
 
 ---
 
-**Need Help?** Check out [JENKINS_SETUP.md](./JENKINS_SETUP.md) for detailed setup instructions!
+## 📋 Table of Contents
+
+- [Project Overview](#project-overview)
+- [Tech Stack](#tech-stack)
+- [Project Structure](#project-structure)
+- [Prerequisites](#prerequisites)
+- [Phase 3: Dockerize Applications](#phase-3-dockerize-applications)
+- [Phase 4: Terraform EC2 Provisioning](#phase-4-terraform-ec2-provisioning)
+- [Phase 5: Ansible Setup and Deployment](#phase-5-ansible-setup-and-deployment)
+- [Phase 6: Jenkins Pipeline](#phase-6-jenkins-pipeline)
+- [Phase 7: End-to-End CI/CD Flow](#phase-7-end-to-end-cicd-flow)
+- [Phase 8: Verification and Troubleshooting](#phase-8-verification-and-troubleshooting)
+- [Complete Workflow](#complete-workflow)
+- [Clean Up](#clean-up)
+
+---
+
+## Project Overview
+
+This project demonstrates a complete DevOps CI/CD pipeline for a full-stack application:
+- **Frontend:** React (Vite) served by Nginx
+- **Backend:** Spring Boot REST API
+- **Infrastructure:** AWS EC2 (provisioned with Terraform)
+- **Configuration Management:** Ansible
+- **CI/CD:** Jenkins
+- **Containerization:** Docker
+- **Container Registry:** DockerHub
+
+---
+
+## Tech Stack
+
+| Component | Technology |
+|-----------|-----------|
+| Frontend | React 19 + Vite |
+| Backend | Spring Boot 3.5.5 (Java 17) |
+| Web Server | Nginx |
+| Containerization | Docker |
+| Container Orchestration | Docker Compose |
+| CI/CD | Jenkins |
+| Infrastructure as Code | Terraform |
+| Configuration Management | Ansible |
+| Cloud Provider | AWS EC2 (Free Tier) |
+| Container Registry | DockerHub |
+| Version Control | Git + GitHub |
+
+---
+
+## Project Structure
+
+```
+.
+├── frontend/
+│   ├── src/
+│   ├── Dockerfile
+│   ├── nginx.conf
+│   ├── package.json
+│   └── vite.config.js
+├── backend/
+│   ├── src/
+│   ├── Dockerfile
+│   ├── pom.xml
+│   └── mvnw
+├── terraform/
+│   ├── main.tf
+│   ├── devops-key (git-ignored)
+│   └── devops-key.pub (git-ignored)
+├── ansible/
+│   ├── inventory.ini
+│   └── deploy.yml
+├── docker-compose.yml
+├── Jenkinsfile
+├── .gitignore
+└── README.md
+```
+
+**On Windows with WSL (Ubuntu):**
+- Windows 10/11 with WSL2
+- Ubuntu 22.04 in WSL
+- Docker installed in WSL (NOT Docker Desktop)
+- Java 17+ (for Jenkins)
+- Jenkins installed as systemd service
+- Git
+
+**Accounts Needed:**
+- AWS Account (Free Tier)
+- DockerHub Account
+- GitHub Account
+
+---
+
+## Phase 3: Dockerize Applications
+
+### Goal
+Create production-ready Dockerfiles that can be built independently.
+
+### 3.1 Frontend Dockerfile
+
+The frontend Dockerfile uses a multi-stage build:
+- **Stage 1:** Node.js build environment
+- **Stage 2:** Nginx runtime
+
+Key features:
+- Accepts `VITE_API_BASE_URL` build argument
+- Optimized layer caching
+- Minimal production image
+
+```dockerfile
+# See frontend/Dockerfile for complete implementation
+```
+
+### 3.2 Backend Dockerfile
+
+The backend Dockerfile uses a multi-stage build:
+- **Stage 1:** Maven build
+- **Stage 2:** Java runtime (JRE)
+
+Key features:
+- Non-root user for security
+- Optimized layer caching
+- Minimal production image
+
+```dockerfile
+# See backend/Dockerfile for complete implementation
+```
+
+### 3.3 Test Local Builds
+
+Run these commands in **WSL Ubuntu** from your project root:
+
+```bash
+# Navigate to project directory in WSL
+cd "/mnt/f/sem 5 mine/DevOps/project/version_2.0_completed_finalized"
+
+# Build backend image
+cd backend
+docker build -t your-dockerhub-username/backend:test .
+cd ..
+
+# Build frontend image
+cd frontend
+docker build -t your-dockerhub-username/frontend:test \
+  --build-arg VITE_API_BASE_URL=http://localhost:8080/api .
+cd ..
+
+# Verify images were created
+docker images | grep "your-dockerhub-username"
+```
+
+**✅ Phase 3 Complete** when both images build successfully.
+
+---
+
+## Phase 4: Terraform EC2 Provisioning
+
+### Goal
+Create an EC2 instance with proper security groups using Terraform.
+
+### 4.1 Install Terraform
+
+```bash
+# In WSL Ubuntu
+wget -O- https://apt.releases.hashicorp.com/gpg | sudo gpg --dearmor -o /usr/share/keyrings/hashicorp-archive-keyring.gpg
+echo "deb [signed-by=/usr/share/keyrings/hashicorp-archive-keyring.gpg] https://apt.releases.hashicorp.com $(lsb_release -cs) main" | sudo tee /etc/apt/sources.list.d/hashicorp.list
+sudo apt update && sudo apt install terraform -y
+
+# Verify
+terraform --version
+```
+
+### 4.2 Generate SSH Key Pair
+
+```bash
+cd "/mnt/f/sem 5 mine/DevOps/project/version_2.0_completed_finalized/terraform"
+
+# Generate SSH key (no passphrase for automation)
+ssh-keygen -t rsa -b 4096 -f devops-key -N ""
+
+# This creates: devops-key (private) and devops-key.pub (public)
+ls -la devops-key*
+```
+
+### 4.3 Configure AWS Credentials
+
+```bash
+# Install AWS CLI
+sudo apt install awscli -y
+
+# Configure credentials
+aws configure
+# Enter AWS Access Key ID
+# Enter AWS Secret Access Key
+# Region: us-east-1 (or preferred)
+# Output: json
+```
+
+**Get AWS credentials:**
+1. AWS Console → IAM → Users → Your user → Security credentials
+2. Create access key → CLI
+3. Save Access Key ID and Secret
+
+### 4.4 Deploy Infrastructure
+
+```bash
+cd terraform
+
+# Initialize Terraform
+terraform init
+
+# Validate configuration
+terraform validate
+
+# Preview changes
+terraform plan
+
+# Create infrastructure
+terraform apply
+# Type 'yes' when prompted
+
+# Save the outputs (Public IP, SSH command, URLs)
+```
+
+### 4.5 Test SSH Connection
+
+```bash
+# Set correct permissions
+chmod 400 devops-key
+
+# Test connection
+ssh -i devops-key ubuntu@<EC2_PUBLIC_IP>
+
+# Exit
+exit
+```
+
+**Common Issues:**
+- **AMI not found:** Check AMI ID for your region at [Ubuntu Cloud Images](https://cloud-images.ubuntu.com/locator/ec2/)
+- **Permission denied:** Run `chmod 400 devops-key`
+- **Timeout:** Verify security group allows port 22
+
+**✅ Phase 4 Complete** when you can SSH into EC2.
+
+---
+
+## Phase 5: Ansible Setup and Deployment
+
+### Goal
+Use Ansible to install Docker on EC2 and deploy containers.
+
+### 5.1 Install Ansible
+
+```bash
+# In WSL Ubuntu
+sudo apt update
+sudo apt install ansible -y
+
+# Verify
+ansible --version
+```
+
+### 5.2 Update Ansible Inventory
+
+Edit `ansible/inventory.ini` and replace `<EC2_PUBLIC_IP>` with your actual EC2 IP from Terraform output.
+
+```ini
+[devops_server]
+devops ansible_host=<EC2_PUBLIC_IP> ansible_user=ubuntu ansible_ssh_private_key_file=../terraform/devops-key ansible_ssh_common_args='-o StrictHostKeyChecking=no'
+
+[devops_server:vars]
+ansible_python_interpreter=/usr/bin/python3
+```
+
+### 5.3 Update docker-compose.yml
+
+Replace `YOUR_DOCKERHUB_USERNAME` in `docker-compose.yml` with your actual DockerHub username.
+
+### 5.4 Test Ansible Connection
+
+```bash
+cd ansible
+
+# Test ping
+ansible devops_server -i inventory.ini -m ping
+
+# Expected: devops | SUCCESS => { "ping": "pong" }
+```
+
+### 5.5 Run Ansible Playbook
+
+```bash
+# Set DockerHub credentials
+export DOCKER_USERNAME=your-dockerhub-username
+export DOCKER_PASSWORD=your-dockerhub-password
+
+# Run deployment
+ansible-playbook -i inventory.ini deploy.yml
+
+# Watch output - installs Docker, copies files, starts containers
+```
+
+**Common Issues:**
+- **SSH fails:** Update EC2 IP in inventory.ini
+- **Permission denied:** Check key permissions: `chmod 400 ../terraform/devops-key`
+- **Docker install fails:** Ensure EC2 has internet access
+
+**✅ Phase 5 Complete** when Ansible successfully deploys containers.
+
+---
+
+## Phase 6: Jenkins Pipeline
+
+### Goal
+Create a Jenkins pipeline that builds, pushes, and deploys automatically.
+
+### 6.1 Prepare Jenkins Environment
+
+```bash
+# In WSL, add Jenkins user to docker group
+sudo usermod -aG docker jenkins
+sudo systemctl restart jenkins
+
+# Install Ansible
+sudo apt install ansible -y
+
+# Verify Jenkins can use Docker
+sudo -u jenkins docker ps
+
+# Verify Ansible
+sudo -u jenkins ansible --version
+```
+
+### 6.2 Configure Jenkins Credentials
+
+Access Jenkins at `http://localhost:8080`:
+
+1. **DockerHub Credentials:**
+   - Navigate: Manage Jenkins → Credentials → System → Global credentials
+   - Add Credentials
+   - Kind: **Username with password**
+   - Username: your DockerHub username
+   - Password: your DockerHub password
+   - ID: `dockerhub-credentials`
+
+2. **SSH Key for EC2:**
+   - Add Credentials
+   - Kind: **SSH Username with private key**
+   - ID: `ec2-ssh-key`
+   - Username: `ubuntu`
+   - Private Key: Enter directly → paste contents of `terraform/devops-key`
+
+3. **EC2 IP Address:**
+   - Add Credentials
+   - Kind: **Secret text**
+   - Secret: Your EC2 public IP
+   - ID: `ec2-ip`
+
+### 6.3 Update Jenkinsfile
+
+Replace `YOUR_DOCKERHUB_USERNAME` in `Jenkinsfile` with your actual DockerHub username.
+
+### 6.4 Create Jenkins Pipeline Job
+
+1. Open Jenkins → **New Item**
+2. Name: `devops-project-pipeline`
+3. Type: **Pipeline**
+4. Configuration:
+   - Pipeline definition: **Pipeline script from SCM**
+   - SCM: **Git**
+   - Repository URL: `https://github.com/your-username/your-repo.git`
+   - Branch: `*/main`
+   - Script Path: `Jenkinsfile`
+5. **Save**
+
+**✅ Phase 6 Complete** when Jenkins pipeline is configured.
+
+---
+
+## Phase 7: End-to-End CI/CD Flow
+
+### Goal
+Test the complete workflow from GitHub to production.
+
+### 7.1 Push to GitHub
+
+```bash
+cd "/mnt/f/sem 5 mine/DevOps/project/version_2.0_completed_finalized"
+
+# Initialize git
+git init
+
+# Add files
+git add .
+
+# Commit
+git commit -m "Initial DevOps project setup"
+
+# Add remote (create repo on GitHub first)
+git remote add origin https://github.com/your-username/your-repo.git
+git branch -M main
+git push -u origin main
+```
+
+### 7.2 Trigger Pipeline
+
+**Option 1: Manual Trigger**
+- Jenkins → `devops-project-pipeline` → **Build Now**
+
+**Option 2: Auto-trigger with Webhook**
+- GitHub repo → Settings → Webhooks → Add webhook
+- Payload URL: `http://your-jenkins-ip:8080/github-webhook/`
+- Content type: `application/json`
+
+### 7.3 Monitor Pipeline
+
+Watch Jenkins console output for:
+1. ✅ Checkout
+2. ✅ Build Backend Image
+3. ✅ Build Frontend Image
+4. ✅ Push Images to DockerHub
+5. ✅ Deploy to EC2 with Ansible
+
+### 7.4 Verify Deployment
+
+```bash
+# SSH into EC2
+ssh -i terraform/devops-key ubuntu@<EC2_IP>
+
+# Check containers
+docker ps
+
+# Check logs
+docker logs frontend
+docker logs backend
+
+# Exit
+exit
+```
+
+### 7.5 Access Application
+
+Open browser:
+- **Frontend:** `http://<EC2_PUBLIC_IP>`
+- **Backend API:** `http://<EC2_PUBLIC_IP>:8080/api`
+
+**✅ Phase 7 Complete** when application is accessible on EC2.
+
+---
+
+## Phase 8: Verification and Troubleshooting
+
+### Complete Verification Checklist
+
+**Infrastructure:**
+- [ ] EC2 instance running
+- [ ] Security groups allow ports 22, 80, 8080
+- [ ] SSH connection works
+
+**Docker Images:**
+- [ ] Images visible in DockerHub
+- [ ] Both `latest` and build-number tags present
+
+**EC2 Deployment:**
+- [ ] Docker installed on EC2
+- [ ] Containers running (`docker ps`)
+- [ ] Frontend accessible
+- [ ] Backend API responding
+
+**CI/CD Pipeline:**
+- [ ] Jenkins pipeline runs successfully
+- [ ] All stages pass
+- [ ] Ansible deployment succeeds
+
+### Common Issues and Fixes
+
+#### Issue 1: Jenkins can't connect to Docker
+
+**Symptoms:** `permission denied while trying to connect to Docker daemon`
+
+**Fix:**
+```bash
+sudo usermod -aG docker jenkins
+sudo systemctl restart jenkins
+sudo -u jenkins docker ps
+```
+
+#### Issue 2: Ansible SSH connection fails
+
+**Symptoms:** `Failed to connect to the host via ssh`
+
+**Fix:**
+```bash
+# Check key permissions
+chmod 400 terraform/devops-key
+
+# Verify manual SSH works
+ssh -i terraform/devops-key ubuntu@<EC2_IP>
+
+# Update inventory.ini with correct IP
+```
+
+#### Issue 3: Frontend can't reach backend
+
+**Symptoms:** Network errors or 404 from frontend
+
+**Fix:**
+```bash
+# Verify frontend built with correct API URL
+# Check Jenkins build logs for:
+# --build-arg VITE_API_BASE_URL=http://<EC2_IP>:8080/api
+
+# Test backend directly
+ssh -i terraform/devops-key ubuntu@<EC2_IP>
+curl http://localhost:8080/api
+```
+
+#### Issue 4: Docker Compose not found
+
+**Symptoms:** `docker compose: command not found`
+
+**Fix:**
+```bash
+ssh -i terraform/devops-key ubuntu@<EC2_IP>
+sudo apt update
+sudo apt install docker-compose-plugin -y
+docker compose version
+```
+
+#### Issue 5: Port already in use
+
+**Symptoms:** `port is already allocated`
+
+**Fix:**
+```bash
+ssh -i terraform/devops-key ubuntu@<EC2_IP>
+sudo lsof -i :8080
+sudo kill -9 <PID>
+
+# Or restart containers
+cd /home/ubuntu/app
+docker compose down
+docker compose up -d
+```
+
+#### Issue 6: Images not pulling latest
+
+**Symptoms:** Old code still running after deployment
+
+**Fix:**
+```bash
+ssh -i terraform/devops-key ubuntu@<EC2_IP>
+cd /home/ubuntu/app
+docker compose pull
+docker compose down
+docker compose up -d --force-recreate
+```
+
+### Useful Monitoring Commands
+
+```bash
+# Check EC2 status
+aws ec2 describe-instances --instance-ids <INSTANCE_ID>
+
+# SSH and monitor
+ssh -i terraform/devops-key ubuntu@<EC2_IP>
+docker ps
+docker stats
+docker logs -f frontend
+docker logs -f backend
+
+# Test Ansible
+cd ansible
+ansible devops_server -i inventory.ini -m ping
+
+# Jenkins logs
+sudo journalctl -u jenkins -f
+
+# Docker disk usage
+docker system df
+```
+
+---
+
+## Complete Workflow
+
+```
+Developer → GitHub → Jenkins → DockerHub → Ansible → EC2
+```
+
+1. **Developer** pushes code to GitHub
+2. **GitHub** triggers Jenkins webhook (or manual build)
+3. **Jenkins:**
+   - Clones repository
+   - Builds frontend Docker image (with EC2 API URL)
+   - Builds backend Docker image
+   - Pushes images to DockerHub
+   - Triggers Ansible playbook
+4. **Ansible:**
+   - Connects to EC2 via SSH
+   - Installs Docker if needed
+   - Copies docker-compose.yml
+   - Pulls latest images
+   - Runs `docker compose up -d`
+5. **EC2:**
+   - Frontend container (port 80)
+   - Backend container (port 8080)
+6. **Users** access application
+
+---
+
+## Clean Up
+
+When done with the project:
+
+```bash
+# Stop containers on EC2
+ssh -i terraform/devops-key ubuntu@<EC2_IP> "cd /home/ubuntu/app && docker compose down"
+
+# Destroy infrastructure
+cd terraform
+terraform destroy
+# Type 'yes' when prompted
+
+# Remove local images
+docker rmi your-username/frontend:latest your-username/backend:latest
+
+# Clean Docker system
+docker system prune -a -f
+```
+
+**Remove from DockerHub:**
+- Visit https://hub.docker.com → Repositories → Delete
+
+---
+
+## Next Steps for Enhancement
+
+- [ ] Add database (MySQL/PostgreSQL) to docker-compose.yml
+- [ ] Implement health checks
+- [ ] Set up HTTPS with Let's Encrypt
+- [ ] Add monitoring (Prometheus + Grafana)
+- [ ] Implement automated testing
+- [ ] Add staging environment
+- [ ] Blue-green deployment strategy
+- [ ] Add secrets management (AWS Secrets Manager)
+
+---
+
+## Resources
+
+- [Docker Documentation](https://docs.docker.com/)
+- [Jenkins Documentation](https://www.jenkins.io/doc/)
+- [Terraform AWS Provider](https://registry.terraform.io/providers/hashicorp/aws/latest/docs)
+- [Ansible Documentation](https://docs.ansible.com/)
+- [AWS EC2 Documentation](https://docs.aws.amazon.com/ec2/)
+
+---
+
+## License
+
+This project is for educational purposes as part of a university DevOps course.
+
+---
+
+## Author
+
+University DevOps Project - 2026
