@@ -1,46 +1,85 @@
 version: "3.8"
+
 services:
+  # MySQL Database
   db:
     image: mysql:8.0
+    container_name: mysql_db
     environment:
-      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-Tt51714183.}
-      MYSQL_DATABASE: ${MYSQL_DATABASE:-task_tracker}
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-DevOps@2026}
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-taskdb}
+      MYSQL_USER: ${MYSQL_USER:-devops}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:-DevOps@2026}
     ports:
-      - "3307:3306"
-    healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
-      timeout: 20s
-      retries: 10
+      - "3306:3306"
     volumes:
       - mysql_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${MYSQL_ROOT_PASSWORD:-DevOps@2026}"]
+      timeout: 20s
+      retries: 10
+      interval: 10s
+    restart: unless-stopped
+    networks:
+      - app-network
+    # Resource limits for t3.micro (1GB RAM total)
+    deploy:
+      resources:
+        limits:
+          memory: 300M
+        reservations:
+          memory: 200M
 
+  # Spring Boot Backend
   backend:
-    build: ./backend
+    image: YOUR_DOCKERHUB_USERNAME/backend:latest
+    container_name: backend
     depends_on:
       db:
         condition: service_healthy
-    environment:
-      SPRING_DATASOURCE_URL: jdbc:mysql://db:3306/${MYSQL_DATABASE:-task_tracker}
-      SPRING_DATASOURCE_USERNAME: root
-      SPRING_DATASOURCE_PASSWORD: ${MYSQL_ROOT_PASSWORD:-Tt51714183.}
-      SPRING_JPA_HIBERNATE_DDL_AUTO: update
-      SPRING_JPA_DATABASE_PLATFORM: org.hibernate.dialect.MySQLDialect
-      SPRING_PROFILES_ACTIVE: prod
-      SERVER_PORT: 8080
     ports:
       - "8080:8080"
+    environment:
+      - SPRING_PROFILES_ACTIVE=prod
+      - SERVER_PORT=8080
+      # Database connection
+      - SPRING_DATASOURCE_URL=jdbc:mysql://db:3306/${MYSQL_DATABASE:-taskdb}
+      - SPRING_DATASOURCE_USERNAME=${MYSQL_USER:-devops}
+      - SPRING_DATASOURCE_PASSWORD=${MYSQL_PASSWORD:-DevOps@2026}
+      - SPRING_JPA_HIBERNATE_DDL_AUTO=update
+      - SPRING_JPA_DATABASE_PLATFORM=org.hibernate.dialect.MySQLDialect
     restart: unless-stopped
+    networks:
+      - app-network
+    deploy:
+      resources:
+        limits:
+          memory: 400M
+        reservations:
+          memory: 300M
 
+  # React Frontend
   frontend:
-    build:
-      context: ./frontend
-      args:
-        VITE_API_BASE_URL: http://localhost:8080/api
+    image: YOUR_DOCKERHUB_USERNAME/frontend:latest
+    container_name: frontend
     depends_on:
       - backend
     ports:
-      - "9000:80"
+      - "80:80"
     restart: unless-stopped
+    networks:
+      - app-network
+    deploy:
+      resources:
+        limits:
+          memory: 200M
+        reservations:
+          memory: 100M
 
 volumes:
   mysql_data:
+    driver: local
+
+networks:
+  app-network:
+    driver: bridge
