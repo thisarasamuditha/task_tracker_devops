@@ -26,11 +26,14 @@ Complete DevOps implementation for deploying a React frontend and Spring Boot ba
 This project demonstrates a complete DevOps CI/CD pipeline for a full-stack application:
 - **Frontend:** React (Vite) served by Nginx
 - **Backend:** Spring Boot REST API
+- **Database:** MySQL 8.0 (containerized)
 - **Infrastructure:** AWS EC2 (provisioned with Terraform)
 - **Configuration Management:** Ansible
 - **CI/CD:** Jenkins
 - **Containerization:** Docker
 - **Container Registry:** DockerHub
+
+**Architecture:** All components (frontend, backend, database) run as Docker containers on a single EC2 instance, orchestrated by Docker Compose.
 
 ---
 
@@ -40,13 +43,14 @@ This project demonstrates a complete DevOps CI/CD pipeline for a full-stack appl
 |-----------|-----------|
 | Frontend | React 19 + Vite |
 | Backend | Spring Boot 3.5.5 (Java 17) |
+| Database | MySQL 8.0 |
 | Web Server | Nginx |
 | Containerization | Docker |
 | Container Orchestration | Docker Compose |
 | CI/CD | Jenkins |
 | Infrastructure as Code | Terraform |
 | Configuration Management | Ansible |
-| Cloud Provider | AWS EC2 (Free Tier) |
+| Cloud Provider | AWS EC2 (t3.micro - Free Tier) |
 | Container Registry | DockerHub |
 | Version Control | Git + GitHub |
 
@@ -154,6 +158,79 @@ docker images | grep "your-dockerhub-username"
 ```
 
 **✅ Phase 3 Complete** when both images build successfully.
+
+**Note:** You don't need to build a MySQL image - it will be pulled from DockerHub automatically.
+
+---
+
+## Phase 3.5: Database Configuration (NEW)
+
+### Goal
+Configure MySQL database to run inside EC2 alongside frontend and backend.
+
+### 3.5.1 Database Setup Overview
+
+**Architecture:**
+```
+EC2 Instance (t3.micro - 1GB RAM)
+├── MySQL Container (Port 3306) - ~300MB RAM
+├── Backend Container (Port 8080) - ~400MB RAM
+└── Frontend Container (Port 80) - ~200MB RAM
+```
+
+**Key Points:**
+- MySQL runs in a Docker container using official `mysql:8.0` image
+- Data persists in Docker volume `mysql_data`
+- Backend connects to database via Docker network (service name: `db`)
+- Database credentials managed via environment variables
+- Memory limits set for t3.micro compatibility
+
+### 3.5.2 Database Credentials
+
+**Default credentials** (can be changed in docker-compose.yml):
+- **Root Password:** `DevOps@2026`
+- **Database Name:** `taskdb`
+- **Username:** `devops`
+- **Password:** `DevOps@2026`
+
+**⚠️ Important:** These are for academic/demo purposes. In production, use strong passwords and secrets management.
+
+### 3.5.3 Verify Backend MySQL Driver
+
+Ensure `pom.xml` includes MySQL connector:
+
+```xml
+<dependency>
+    <groupId>com.mysql</groupId>
+    <artifactId>mysql-connector-j</artifactId>
+    <scope>runtime</scope>
+</dependency>
+```
+
+### 3.5.4 Test Database Connection Locally (Optional)
+
+```bash
+# Start all services locally
+cd "/mnt/f/sem 5 mine/DevOps/project/version_2.0_completed_finalized"
+docker-compose up -d
+
+# Check containers
+docker ps
+
+# View database logs
+docker logs mysql_db
+
+# Connect to database
+docker exec -it mysql_db mysql -u devops -pDevOps@2026 taskdb
+
+# Inside MySQL shell:
+SHOW DATABASES;
+USE taskdb;
+SHOW TABLES;
+exit
+```
+
+**✅ Phase 3.5 Complete** when you understand the database setup.
 
 ---
 
@@ -560,6 +637,51 @@ docker compose down
 docker compose up -d --force-recreate
 ```
 
+#### Issue 7: Database connection fails
+
+**Symptoms:** Backend logs show "Connection refused" or "Unknown database"
+
+**Fix:**
+```bash
+ssh -i terraform/devops-key ubuntu@<EC2_IP>
+
+# Check if MySQL container is running
+docker ps | grep mysql
+
+# Check MySQL logs
+docker logs mysql_db
+
+# Wait for MySQL to be fully ready (takes ~30 seconds)
+docker logs -f mysql_db | grep "ready for connections"
+
+# Test database connection
+docker exec mysql_db mysql -u devops -pDevOps@2026 -e "SHOW DATABASES;"
+
+# If needed, restart backend after database is ready
+docker restart backend
+```
+
+#### Issue 8: Out of memory on EC2
+
+**Symptoms:** Containers crashing, `docker ps` shows containers restarting
+
+**Fix:**
+```bash
+# Check memory usage
+docker stats --no-stream
+
+# Check EC2 memory
+free -h
+
+# If out of memory, reduce MySQL buffer pool
+# Edit docker-compose.yml and add to db service:
+command: --innodb-buffer-pool-size=128M
+
+# Restart containers
+docker compose down
+docker compose up -d
+```
+
 ### Useful Monitoring Commands
 
 ```bash
@@ -572,6 +694,10 @@ docker ps
 docker stats
 docker logs -f frontend
 docker logs -f backend
+docker logs -f mysql_db
+
+# Check database tables
+docker exec mysql_db mysql -u devops -pDevOps@2026 taskdb -e "SHOW TABLES;"
 
 # Test Ansible
 cd ansible
@@ -589,7 +715,7 @@ docker system df
 ## Complete Workflow
 
 ```
-Developer → GitHub → Jenkins → DockerHub → Ansible → EC2
+Developer → GitHub → Jenkins → DockerHub → Ansible → EC2 (Frontend + Backend + Database)
 ```
 
 1. **Developer** pushes code to GitHub
@@ -604,12 +730,22 @@ Developer → GitHub → Jenkins → DockerHub → Ansible → EC2
    - Connects to EC2 via SSH
    - Installs Docker if needed
    - Copies docker-compose.yml
-   - Pulls latest images
+   - Pulls latest frontend/backend images from DockerHub
+   - Pulls MySQL image from DockerHub
    - Runs `docker compose up -d`
-5. **EC2:**
-   - Frontend container (port 80)
-   - Backend container (port 8080)
-6. **Users** access application
+5. **EC2 (All containers on single instance):**
+   - MySQL container (port 3306) - data persists in volume
+   - Backend container (port 8080) - connects to MySQL
+   - Frontend container (port 80) - proxies API calls
+6. **Users** access application at `http://<EC2_IP>`
+
+**Container Communication:**
+```
+Frontend (Nginx) → Backend (Spring Boot) → MySQL Database
+      ↓                    ↓                      ↓
+   Port 80             Port 8080              Port 3306
+                    (Docker network: app-network)
+```
 
 ---
 
