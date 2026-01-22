@@ -1,0 +1,133 @@
+---
+- name: Deploy DevOps Project to EC2
+  hosts: devops_server
+  become: yes
+  vars:
+    docker_compose_version: "2.24.5"
+    project_dir: "/home/ubuntu/app"
+    dockerhub_username: "YOUR_DOCKERHUB_USERNAME"
+    
+  tasks:
+    - name: Update apt cache
+      apt:
+        update_cache: yes
+        cache_valid_time: 3600
+
+    - name: Install prerequisites
+      apt:
+        name:
+          - apt-transport-https
+          - ca-certificates
+          - curl
+          - gnupg
+          - lsb-release
+          - software-properties-common
+        state: present
+
+    - name: Create directory for Docker GPG key
+      file:
+        path: /etc/apt/keyrings
+        state: directory
+        mode: '0755'
+
+    - name: Add Docker GPG key
+      shell: |
+        curl -fsSL https://download.docker.com/linux/ubuntu/gpg | gpg --dearmor -o /etc/apt/keyrings/docker.gpg
+        chmod a+r /etc/apt/keyrings/docker.gpg
+      args:
+        creates: /etc/apt/keyrings/docker.gpg
+
+    - name: Add Docker repository
+      apt_repository:
+        repo: "deb [arch=amd64 signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu {{ ansible_distribution_release }} stable"
+        state: present
+        filename: docker
+
+    - name: Install Docker
+      apt:
+        name:
+          - docker-ce
+          - docker-ce-cli
+          - containerd.io
+          - docker-buildx-plugin
+          - docker-compose-plugin
+        state: present
+        update_cache: yes
+
+    - name: Start and enable Docker service
+      systemd:
+        name: docker
+        state: started
+        enabled: yes
+
+    - name: Add ubuntu user to docker group
+      user:
+        name: ubuntu
+        groups: docker
+        append: yes
+
+    - name: Reset SSH connection to apply group changes
+      meta: reset_connection
+
+    - name: Create application directory
+      file:
+        path: "{{ project_dir }}"
+        state: directory
+        owner: ubuntu
+        group: ubuntu
+        mode: '0755'
+
+    - name: Copy docker-compose.yml to server
+      copy:
+        src: ../docker-compose.yml
+        dest: "{{ project_dir }}/docker-compose.yml"
+        owner: ubuntu
+        group: ubuntu
+        mode: '0644'
+
+    - name: Log in to DockerHub
+      community.docker.docker_login:
+        username: "{{ lookup('env', 'DOCKER_USERNAME') }}"
+        password: "{{ lookup('env', 'DOCKER_PASSWORD') }}"
+      become_user: ubuntu
+      when: lookup('env', 'DOCKER_USERNAME') != '' and lookup('env', 'DOCKER_PASSWORD') != ''
+
+    - name: Pull latest images
+      command: docker compose pull
+      args:
+        chdir: "{{ project_dir }}"
+      become_user: ubuntu
+
+    - name: Stop existing containers
+      command: docker compose down
+      args:
+        chdir: "{{ project_dir }}"
+      become_user: ubuntu
+      ignore_errors: yes
+
+    - name: Start containers with docker compose
+      command: docker compose up -d
+      args:
+        chdir: "{{ project_dir }}"
+      become_user: ubuntu
+
+    - name: Wait for backend to be ready
+      wait_for:
+        port: 8080
+        delay: 10
+        timeout: 60
+
+    - name: Wait for frontend to be ready
+      wait_for:
+        port: 80
+        delay: 5
+        timeout: 30
+
+    - name: Display running containers
+      command: docker ps
+      become_user: ubuntu
+      register: docker_ps_output
+
+    - name: Show container status
+      debug:
+        var: docker_ps_output.stdout_lines
