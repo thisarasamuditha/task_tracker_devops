@@ -8,7 +8,7 @@ export default defineConfig({
     proxy: {
       // Enable local dev proxy so relative "/api" paths work too
       "/api": {
-        target: "http://localhost:8080",
+        target: "http://localhost:8088",
         changeOrigin: true,
         secure: false,
       },

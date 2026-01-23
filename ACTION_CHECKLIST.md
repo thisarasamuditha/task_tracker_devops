@@ -91,7 +91,7 @@ docker logs backend | tail -20
 docker exec mysql_db mysql -u devops -pDevOps@2026 -e "SHOW DATABASES;"
 
 # Test backend API (if you have a health endpoint)
-curl http://localhost:8080/actuator/health
+curl http://localhost:8088/actuator/health
 
 # Test frontend
 curl http://localhost
@@ -168,7 +168,7 @@ terraform show | grep 3306
 3. Monitor pipeline progress
 
 **Option B: Manual trigger**
-1. Open Jenkins: `http://localhost:8080`
+1. Open Jenkins: `http://localhost:8088`
 2. Go to `devops-project-pipeline`
 3. Click **Build Now**
 4. Watch **Console Output**
@@ -202,7 +202,7 @@ docker ps
 # Expected output (3 containers):
 # CONTAINER ID   IMAGE                      STATUS         PORTS
 # xxxx           your-user/frontend:latest  Up X minutes   0.0.0.0:80->80/tcp
-# xxxx           your-user/backend:latest   Up X minutes   0.0.0.0:8080->8080/tcp
+# xxxx           your-user/backend:latest   Up X minutes   0.0.0.0:8088->8088/tcp
 # xxxx           mysql:8.0                  Up X minutes   0.0.0.0:3306->3306/tcp
 
 # Check MySQL is ready
@@ -242,10 +242,10 @@ http://<EC2_PUBLIC_IP>
 **Backend API:**
 ```bash
 # Test from terminal
-curl http://<EC2_PUBLIC_IP>:8080/api
+curl http://<EC2_PUBLIC_IP>:8088/api
 
 # Or open in browser
-http://<EC2_PUBLIC_IP>:8080/api
+http://<EC2_PUBLIC_IP>:8088/api
 ```
 
 **Database (Optional):**

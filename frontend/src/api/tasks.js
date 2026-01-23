@@ -1,6 +1,6 @@
 import axios from "axios";
 
-const API_BASE_URL = "http://localhost:8080/api";
+const API_BASE_URL = "http://localhost:8088/api";
 
 // Create a new task
 export const createTask = async (taskData) => {
@@ -37,7 +37,7 @@ export const createTask = async (taskData) => {
 
     if (error.code === "ERR_NETWORK") {
       throw new Error(
-        "Cannot connect to server. Please check if backend is running on http://localhost:8080"
+        "Cannot connect to server. Please check if backend is running on http://localhost:8088"
       );
     }
 

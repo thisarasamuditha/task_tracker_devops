@@ -150,7 +150,7 @@ cd ..
 # Build frontend image
 cd frontend
 docker build -t your-dockerhub-username/frontend:test \
-  --build-arg VITE_API_BASE_URL=http://localhost:8080/api .
+  --build-arg VITE_API_BASE_URL=http://localhost:8088/api .
 cd ..
 
 # Verify images were created
@@ -174,7 +174,7 @@ Configure MySQL database to run inside EC2 alongside frontend and backend.
 ```
 EC2 Instance (t3.micro - 1GB RAM)
 ├── MySQL Container (Port 3306) - ~300MB RAM
-├── Backend Container (Port 8080) - ~400MB RAM
+├── Backend Container (Port 8088) - ~400MB RAM
 └── Frontend Container (Port 80) - ~200MB RAM
 ```
 
@@ -414,7 +414,7 @@ sudo -u jenkins ansible --version
 
 ### 6.2 Configure Jenkins Credentials
 
-Access Jenkins at `http://localhost:8080`:
+Access Jenkins at `http://localhost:8088`:
 
 1. **DockerHub Credentials:**
    - Navigate: Manage Jenkins → Credentials → System → Global credentials
@@ -490,7 +490,7 @@ git push -u origin main
 
 **Option 2: Auto-trigger with Webhook**
 - GitHub repo → Settings → Webhooks → Add webhook
-- Payload URL: `http://your-jenkins-ip:8080/github-webhook/`
+- Payload URL: `http://your-jenkins-ip:8088/github-webhook/`
 - Content type: `application/json`
 
 ### 7.3 Monitor Pipeline
@@ -523,7 +523,7 @@ exit
 
 Open browser:
 - **Frontend:** `http://<EC2_PUBLIC_IP>`
-- **Backend API:** `http://<EC2_PUBLIC_IP>:8080/api`
+- **Backend API:** `http://<EC2_PUBLIC_IP>:8088/api`
 
 **✅ Phase 7 Complete** when application is accessible on EC2.
 
@@ -535,7 +535,7 @@ Open browser:
 
 **Infrastructure:**
 - [ ] EC2 instance running
-- [ ] Security groups allow ports 22, 80, 8080
+- [ ] Security groups allow ports 22, 80, 8088
 - [ ] SSH connection works
 
 **Docker Images:**
@@ -589,11 +589,11 @@ ssh -i terraform/devops-key ubuntu@<EC2_IP>
 ```bash
 # Verify frontend built with correct API URL
 # Check Jenkins build logs for:
-# --build-arg VITE_API_BASE_URL=http://<EC2_IP>:8080/api
+# --build-arg VITE_API_BASE_URL=http://<EC2_IP>:8088/api
 
 # Test backend directly
 ssh -i terraform/devops-key ubuntu@<EC2_IP>
-curl http://localhost:8080/api
+curl http://localhost:8088/api
 ```
 
 #### Issue 4: Docker Compose not found
@@ -615,7 +615,7 @@ docker compose version
 **Fix:**
 ```bash
 ssh -i terraform/devops-key ubuntu@<EC2_IP>
-sudo lsof -i :8080
+sudo lsof -i :8088
 sudo kill -9 <PID>
 
 # Or restart containers
@@ -735,7 +735,7 @@ Developer → GitHub → Jenkins → DockerHub → Ansible → EC2 (Frontend + B
    - Runs `docker compose up -d`
 5. **EC2 (All containers on single instance):**
    - MySQL container (port 3306) - data persists in volume
-   - Backend container (port 8080) - connects to MySQL
+   - Backend container (port 8088) - connects to MySQL
    - Frontend container (port 80) - proxies API calls
 6. **Users** access application at `http://<EC2_IP>`
 
@@ -743,7 +743,7 @@ Developer → GitHub → Jenkins → DockerHub → Ansible → EC2 (Frontend + B
 ```
 Frontend (Nginx) → Backend (Spring Boot) → MySQL Database
       ↓                    ↓                      ↓
-   Port 80             Port 8080              Port 3306
+   Port 80             Port 8088              Port 3306
                     (Docker network: app-network)
 ```
 

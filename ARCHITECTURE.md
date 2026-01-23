@@ -18,7 +18,7 @@
                                     │  │   ┌──────────┐   ┌──────────┐   │  │
                                     │  │   │ Frontend │   │ Backend  │   │  │
                                     │  │   │  Nginx   │──▶│  Spring  │   │  │
-                                    │  │   │ Port 80  │   │Port 8080 │   │  │
+                                    │  │   │ Port 80  │   │Port 8088 │   │  │
                                     │  │   └──────────┘   └────┬─────┘   │  │
                                     │  │                        │         │  │
                                     │  │                        ▼         │  │
@@ -56,7 +56,7 @@
 │  │                │        │                │             │
 │  │  - React App   │        │  - Spring Boot │             │
 │  │  - Nginx       │        │  - Java 17     │             │
-│  │  - Port 80     │        │  - Port 8080   │             │
+│  │  - Port 80     │        │  - Port 8088   │             │
 │  │                │        │                │             │
 │  └────────────────┘        └───────┬────────┘             │
 │         │                          │                       │
@@ -83,7 +83,7 @@
 │         │                                                  │
 │   ┌─────▼──────────────────────────────────────┐         │
 │   │  80 → 80 (Frontend)                        │         │
-│   │  8080 → 8080 (Backend)                     │         │
+│   │  8088 → 8088 (Backend)                     │         │
 │   │  3306 → 3306 (Database - Optional)         │         │
 │   └────────────────────────────────────────────┘         │
 │                                                            │
@@ -178,7 +178,7 @@
 ┌─────────────────┐
 │  Success!       │  Application deployed at http://<EC2_IP>
 │  Deployment     │  Frontend: Port 80
-│  Complete       │  Backend: Port 8080
+│  Complete       │  Backend: Port 8088
 │                 │  Database: Port 3306 (internal)
 └─────────────────┘
 ```
@@ -204,11 +204,11 @@
 └────┬─────────────┘
      │
      │ API Request
-     │ http://backend:8080/api
+     │ http://backend:8088/api
      │
      ▼
 ┌─────────────────────────┐
-│  Spring Boot (Port 8080)│
+│  Spring Boot (Port 8088)│
 │                         │
 │  - REST Controllers     │
 │  - Business Logic       │
@@ -311,7 +311,7 @@
 │  └──────────────────────────────────────────┘         │
 │                                                        │
 │  ┌──────────────────────────────────────────┐         │
-│  │ Port 8080 (HTTP)                         │         │
+│  │ Port 8088 (HTTP)                         │         │
 │  │ Source: 0.0.0.0/0                        │         │
 │  │ Purpose: Backend API access              │         │
 │  └──────────────────────────────────────────┘         │

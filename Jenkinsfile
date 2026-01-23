@@ -46,7 +46,7 @@ pipeline {
                     script {
                         sh """
                             docker build -t ${FRONTEND_IMAGE}:${BUILD_TAG} \
-                              --build-arg VITE_API_BASE_URL=http://${EC2_IP}:8080/api .
+                              --build-arg VITE_API_BASE_URL=http://${EC2_IP}:8088/api .
                             docker tag ${FRONTEND_IMAGE}:${BUILD_TAG} ${FRONTEND_IMAGE}:latest
                         """
                     }
@@ -113,7 +113,7 @@ pipeline {
         success {
             echo '✅ Pipeline completed successfully!'
             echo "🌐 Frontend URL: http://${EC2_IP}"
-            echo "🔧 Backend API: http://${EC2_IP}:8080"
+            echo "🔧 Backend API: http://${EC2_IP}:8088"
         }
         failure {
             echo '❌ Pipeline failed! Check logs for details.'

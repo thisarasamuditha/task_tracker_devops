@@ -132,7 +132,7 @@ docker-compose up -d
 ```bash
 # Check what's using ports
 sudo lsof -i :3306
-sudo lsof -i :8080
+sudo lsof -i :8088
 sudo lsof -i :80
 
 # Kill process
@@ -173,13 +173,13 @@ sudo kill -9 <PID>
 docker exec mysql_db mysqladmin ping -h localhost -u root -pDevOps@2026
 
 # Check connection from backend
-docker exec backend curl -f http://localhost:8080/actuator/health || echo "Backend not ready"
+docker exec backend curl -f http://localhost:8088/actuator/health || echo "Backend not ready"
 ```
 
 ### Application URLs
 ```
 Frontend:  http://<EC2_IP>
-Backend:   http://<EC2_IP>:8080
+Backend:   http://<EC2_IP>:8088
 Database:  <EC2_IP>:3306 (internal only)
 ```
 

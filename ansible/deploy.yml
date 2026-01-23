@@ -113,7 +113,7 @@
 
     - name: Wait for backend to be ready
       wait_for:
-        port: 8080
+        port: 8088
         delay: 10
         timeout: 60
 

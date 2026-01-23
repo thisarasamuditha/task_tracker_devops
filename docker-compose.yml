@@ -1,66 +1,71 @@
-version: "3.8"
-
 services:
-  # MySQL Database
+  # MySQL Database - Memory Optimized for t3.micro
   db:
     image: mysql:8.0
     container_name: mysql_db
+    command:
+      - --default-authentication-plugin=mysql_native_password
+      - --innodb-buffer-pool-size=128M
+      - --innodb-log-buffer-size=32M
+      - --max-connections=50
+      - --innodb-flush-log-at-trx-commit=2
+      - --innodb-flush-method=O_DIRECT
+      - --key-buffer-size=16M
+      - --thread-cache-size=8
+      - --table-open-cache=256
+      - --sort-buffer-size=2M
+      - --read-buffer-size=2M
     environment:
-      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-DevOps@2026}
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-DevOps2026}
       MYSQL_DATABASE: ${MYSQL_DATABASE:-taskdb}
       MYSQL_USER: ${MYSQL_USER:-devops}
-      MYSQL_PASSWORD: ${MYSQL_PASSWORD:-DevOps@2026}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:-DevOps2026}
     ports:
       - "3306:3306"
     volumes:
       - mysql_data:/var/lib/mysql
     healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${MYSQL_ROOT_PASSWORD:-DevOps@2026}"]
-      timeout: 20s
-      retries: 10
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-pDevOps2026"]
+      timeout: 30s
+      retries: 15
       interval: 10s
+      start_period: 60s
     restart: unless-stopped
     networks:
       - app-network
-    # Resource limits for t3.micro (1GB RAM total)
-    deploy:
-      resources:
-        limits:
-          memory: 300M
-        reservations:
-          memory: 200M
+    # Strict memory limit for t3.micro
+    mem_limit: 280m
+    memswap_limit: 280m
 
   # Spring Boot Backend
   backend:
-    image: YOUR_DOCKERHUB_USERNAME/backend:latest
+    image: thisarasamuditha/backend:latest
     container_name: backend
     depends_on:
       db:
         condition: service_healthy
     ports:
-      - "8080:8080"
+      - "8088:8088"
     environment:
       - SPRING_PROFILES_ACTIVE=prod
-      - SERVER_PORT=8080
-      # Database connection
+      - SERVER_PORT=8088
+      # Database connection - Updated password without special chars
       - SPRING_DATASOURCE_URL=jdbc:mysql://db:3306/${MYSQL_DATABASE:-taskdb}
       - SPRING_DATASOURCE_USERNAME=${MYSQL_USER:-devops}
-      - SPRING_DATASOURCE_PASSWORD=${MYSQL_PASSWORD:-DevOps@2026}
+      - SPRING_DATASOURCE_PASSWORD=${MYSQL_PASSWORD:-DevOps2026}
       - SPRING_JPA_HIBERNATE_DDL_AUTO=update
       - SPRING_JPA_DATABASE_PLATFORM=org.hibernate.dialect.MySQLDialect
+      # Memory optimization
+      - JAVA_OPTS=-Xmx256m -Xms128m
     restart: unless-stopped
     networks:
       - app-network
-    deploy:
-      resources:
-        limits:
-          memory: 400M
-        reservations:
-          memory: 300M
+    mem_limit: 350m
+    memswap_limit: 350m
 
   # React Frontend
   frontend:
-    image: YOUR_DOCKERHUB_USERNAME/frontend:latest
+    image: thisarasamuditha/frontend:latest
     container_name: frontend
     depends_on:
       - backend
@@ -69,12 +74,8 @@ services:
     restart: unless-stopped
     networks:
       - app-network
-    deploy:
-      resources:
-        limits:
-          memory: 200M
-        reservations:
-          memory: 100M
+    mem_limit: 150m
+    memswap_limit: 150m
 
 volumes:
   mysql_data:

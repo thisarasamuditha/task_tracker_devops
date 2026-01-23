@@ -34,10 +34,10 @@ resource "aws_security_group" "devops_sg" {
     description = "HTTP access for frontend"
   }
 
-  # Backend - Spring Boot (port 8080)
+  # Backend - Spring Boot (port 8088)
   ingress {
-    from_port   = 8080
-    to_port     = 8080
+    from_port   = 8088
+    to_port     = 8088
     protocol    = "tcp"
     cidr_blocks = ["0.0.0.0/0"]
     description = "Backend API access"
@@ -131,5 +131,5 @@ output "frontend_url" {
 
 output "backend_url" {
   description = "Backend API URL"
-  value       = "http://${aws_instance.devops_server.public_ip}:8080"
+  value       = "http://${aws_instance.devops_server.public_ip}:8088"
 }
