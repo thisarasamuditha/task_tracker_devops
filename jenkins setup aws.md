@@ -54,7 +54,7 @@ Choose the approach that fits your needs.
 
    | Type | Protocol | Port | Source | Description |
    |------|----------|------|--------|-------------|
-   | Custom TCP | TCP | 8080 | 0.0.0.0/0 | Jenkins Web UI |
+   | Custom TCP | TCP | 8088 | 0.0.0.0/0 | Jenkins Web UI |
 
    - Click **Save rules**
 
@@ -227,7 +227,7 @@ ansible [core 2.x.x]
 
 1. Open browser and navigate to:
    ```
-   http://YOUR_EC2_PUBLIC_IP:8080
+   http://YOUR_EC2_PUBLIC_IP:8088
    ```
 
 2. **Unlock Jenkins:**
@@ -250,7 +250,7 @@ ansible [core 2.x.x]
    - Click **Save and Continue**
 
 5. **Instance Configuration:**
-   - Jenkins URL: `http://YOUR_EC2_PUBLIC_IP:8080/`
+   - Jenkins URL: `http://YOUR_EC2_PUBLIC_IP:8088/`
    - Click **Save and Finish**
    - Click **Start using Jenkins**
 
@@ -327,7 +327,7 @@ Since Jenkins and your application are on the same server, we don't need SSH key
    - Click **Add webhook**
 
 2. **Configure Webhook:**
-   - **Payload URL:** `http://YOUR_JENKINS_IP:8080/github-webhook/`
+   - **Payload URL:** `http://YOUR_JENKINS_IP:8088/github-webhook/`
    - **Content type:** `application/json`
    - **Secret:** Leave empty (or use Jenkins token)
    - **Which events:** Select "Just the push event"
@@ -648,7 +648,7 @@ docker logs mysql-container
 
 ## Summary
 
-✅ **Jenkins Server:** Running on AWS EC2 at `http://YOUR_JENKINS_IP:8080`  
+✅ **Jenkins Server:** Running on AWS EC2 at `http://YOUR_JENKINS_IP:8088`  
 ✅ **Docker:** Installed and configured for building images  
 ✅ **Ansible:** Installed for configuration management  
 ✅ **Credentials:** DockerHub, SSH keys configured  
@@ -693,7 +693,7 @@ sudo journalctl -u jenkins -f
 sudo tail -f /var/log/jenkins/jenkins.log
 
 # SSH to application server
-ssh -i /var/lib/jenkins/.ssh/id_ryour existing EC2 instance at `http://YOUR_EC2_IP:8080`  
+ssh -i /var/lib/jenkins/.ssh/id_ryour existing EC2 instance at `http://YOUR_EC2_IP:8088`  
 ✅ **Application:** Running on the same server at `http://YOUR_EC2_IP:80`  
 ✅ **Docker:** Installed and configured for building images  
 ✅ **Credentials:** DockerHub configured  
@@ -744,13 +744,13 @@ This approach runs Jenkins locally on your Windows machine using WSL (Ubuntu) an
 │  │                                                           │  │
 │  │   ┌─────────────────┐        ┌──────────────────┐       │  │
 │  │   │  Jenkins Server │◄───────┤  Docker Engine   │       │  │
-│  │   │  localhost:8080 │        │                  │       │  │
+│  │   │  localhost:8088 │        │                  │       │  │
 │  │   └────────┬────────┘        └──────────────────┘       │  │
 │  │            │                                              │  │
 │  │            │                                              │  │
 │  │   ┌────────▼────────┐                                    │  │
 │  │   │  ngrok Tunnel   │                                    │  │
-│  │   │  Port 8080      │                                    │  │
+│  │   │  Port 8088      │                                    │  │
 │  │   └────────┬────────┘                                    │  │
 │  └────────────┼──────────────────────────────────────────────┘  │
 └───────────────┼─────────────────────────────────────────────────┘
@@ -759,7 +759,7 @@ This approach runs Jenkins locally on your Windows machine using WSL (Ubuntu) an
                 │
 ┌───────────────▼─────────────────────────────────────────────────┐
 │              Internet (ngrok Cloud)                             │
-│         https://abc123.ngrok.io → localhost:8080                │
+│         https://abc123.ngrok.io → localhost:8088                │
 └───────────────┬─────────────────────────────────────────────────┘
                 │
                 │ Webhook POST
@@ -841,11 +841,11 @@ sudo cat /var/lib/jenkins/secrets/initialAdminPassword
 ### Step 1.7: Access Jenkins Locally
 
 1. Open browser on Windows
-2. Navigate to: `http://localhost:8080`
+2. Navigate to: `http://localhost:8088`
 3. Paste the initial admin password
 4. Click **Install suggested plugins**
 5. Create admin user (username, password, email)
-6. Keep Jenkins URL as `http://localhost:8080`
+6. Keep Jenkins URL as `http://localhost:8088`
 7. Click **Start using Jenkins**
 
 ---
@@ -954,8 +954,8 @@ Authtoken saved to configuration file: /home/username/.config/ngrok/ngrok.yml
 
 **In WSL terminal:**
 ```bash
-# Expose Jenkins on port 8080
-ngrok http 8080
+# Expose Jenkins on port 8088
+ngrok http 8088
 ```
 
 **Expected Output:**
@@ -968,7 +968,7 @@ Version                       3.x.x
 Region                        United States (us)
 Latency                       45ms
 Web Interface                 http://127.0.0.1:4040
-Forwarding                    https://abc123def456.ngrok-free.app -> http://localhost:8080
+Forwarding                    https://abc123def456.ngrok-free.app -> http://localhost:8088
                                                                                                                                                     
 Connections                   ttl     opn     rt1     rt5     p50     p90
                               0       0       0.00    0.00    0.00    0.00
@@ -987,7 +987,7 @@ Connections                   ttl     opn     rt1     rt5     p50     p90
 
 1. In Jenkins, go to: **Manage Jenkins** → **System**
 2. Find **Jenkins URL**
-3. Replace `http://localhost:8080` with your ngrok URL
+3. Replace `http://localhost:8088` with your ngrok URL
 4. Example: `https://abc123def456.ngrok-free.app`
 5. Click **Save**
 
@@ -1230,7 +1230,7 @@ curl http://localhost:4040/api/tunnels
 
 # Restart ngrok
 pkill ngrok
-ngrok http 8080
+ngrok http 8088
 ```
 
 ### Error 2: "Permission Denied" - Docker
@@ -1327,10 +1327,10 @@ echo "sudo service docker start" >> ~/.bashrc
 **Best Practices:**
 ```bash
 # Use ngrok with authentication (paid feature)
-ngrok http 8080 --basic-auth="username:password"
+ngrok http 8088 --basic-auth="username:password"
 
 # Use IP restrictions (paid feature)
-ngrok http 8080 --cidr-allow="YOUR_IP/32"
+ngrok http 8088 --cidr-allow="YOUR_IP/32"
 ```
 
 ### 12.2: Jenkins Security
@@ -1368,7 +1368,7 @@ sudo apt upgrade jenkins -y
 
 ```bash
 # Start ngrok in background
-nohup ngrok http 8080 > /dev/null 2>&1 &
+nohup ngrok http 8088 > /dev/null 2>&1 &
 
 # Check if running
 ps aux | grep ngrok
@@ -1387,7 +1387,7 @@ sudo apt install screen -y
 screen -S ngrok
 
 # Run ngrok
-ngrok http 8080
+ngrok http 8088
 
 # Detach: Press Ctrl+A then D
 
@@ -1411,7 +1411,7 @@ After=network.target
 [Service]
 Type=simple
 User=YOUR_USERNAME
-ExecStart=/usr/local/bin/ngrok http 8080
+ExecStart=/usr/local/bin/ngrok http 8088
 Restart=on-failure
 
 [Install]
@@ -1434,7 +1434,7 @@ sudo systemctl status ngrok
 ### ✅ Pre-Flight Checklist
 
 - [ ] WSL installed and working
-- [ ] Jenkins running on `http://localhost:8080`
+- [ ] Jenkins running on `http://localhost:8088`
 - [ ] Docker installed and accessible by Jenkins user
 - [ ] ngrok installed and authenticated
 - [ ] ngrok tunnel running and showing HTTPS URL
@@ -1515,10 +1515,10 @@ docker system prune -a
 
 ```bash
 # Start ngrok tunnel
-ngrok http 8080
+ngrok http 8088
 
 # Background mode
-nohup ngrok http 8080 &
+nohup ngrok http 8088 &
 
 # Check running tunnels
 curl http://localhost:4040/api/tunnels
