@@ -2,13 +2,15 @@ pipeline {
     agent any
     
     environment {
-        DOCKER_USERNAME = 'thisarasamuditha'  // Your DockerHub username
+        DOCKER_USERNAME = 'thisarasamuditha'
         DOCKERHUB_CREDENTIALS = credentials('dockerhub-creds')
         
         FRONTEND_IMAGE = "${DOCKER_USERNAME}/frontend"
         BACKEND_IMAGE = "${DOCKER_USERNAME}/backend"
         
         BUILD_TAG = "${env.BUILD_NUMBER}"
+        
+        APP_DIR = '/home/ubuntu/app'
     }
     
     triggers {
@@ -78,33 +80,29 @@ pipeline {
                 echo '🚀 Deploying application with docker-compose'
                 script {
                     sh """
-                        # Jenkins workspace already contains the code
-                        echo "Current directory: \$(pwd)"
-                        echo "Checking docker-compose.yml..."
-                        ls -la docker-compose.yml
+                        cd ${APP_DIR}
                         
-                        # Pull latest images from DockerHub
+                        # Force remove old containers
+                        docker rm -f mysql_db backend frontend || true
+                        
+                        # Pull latest images
                         docker compose pull
-                        
-                        # Force stop and remove any existing containers with these names
-                        echo "Cleaning up old containers..."
-                        docker stop mysql_db backend frontend 2>/dev/null || true
-                        docker rm mysql_db backend frontend 2>/dev/null || true
-                        
-                        # Also remove containers from this project
-                        docker compose down -v || true
                         
                         # Start new containers
                         docker compose up -d
                         
-                        # Wait for containers to initialize
-                        sleep 10
+                        # Wait for MySQL to be healthy (60 seconds)
+                        echo "⏳ Waiting 60 seconds for MySQL initialization..."
+                        sleep 60
                         
                         # Verify all containers are running
                         docker compose ps
                         
                         # Check MySQL is ready
-                        docker logs mysql_db 2>&1 | grep -i "ready for connections" || echo "MySQL still initializing..."
+                        docker logs mysql_db | grep -i "ready for connections" || echo "⚠️  MySQL still initializing..."
+                        
+                        # Show memory usage
+                        free -h
                     """
                 }
             }
@@ -115,19 +113,19 @@ pipeline {
         success {
             echo '✅ Pipeline completed successfully!'
             echo '🌐 Frontend: http://43.205.116.130'
-            echo '🔧 Backend: http://43.205.116.130:8088/api'
+            echo '🔧 Backend API: http://43.205.116.130:8088/api'
+            echo '🗄️  Database: mysql://43.205.116.130:3306/taskdb'
         }
         failure {
             echo '❌ Pipeline failed!'
         }
         cleanup {
             script {
-                // Cleanup runs in agent context
                 try {
                     sh 'docker logout || true'
                     sh 'docker image prune -f || true'
                 } catch (Exception e) {
-                    echo "Cleanup failed: ${e.message}"
+                    echo "⚠️  Cleanup failed: ${e.message}"
                 }
             }
         }
