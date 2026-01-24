@@ -108,17 +108,23 @@ pipeline {
     
     post {
         success {
-            echo '✅ Pipeline completed successfully!'
-            echo '🌐 Frontend: http://43.205.116.130'
-            echo '🔧 Backend: http://43.205.116.130:8088/api'
-            sh 'docker logout'
+            script {
+                echo '✅ Pipeline completed successfully!'
+                echo '🌐 Frontend: http://43.205.116.130'
+                echo '🔧 Backend: http://43.205.116.130:8088/api'
+                sh 'docker logout || true'
+            }
         }
         failure {
-            echo '❌ Pipeline failed!'
-            sh 'docker logout || true'
+            script {
+                echo '❌ Pipeline failed!'
+                sh 'docker logout || true'
+            }
         }
         always {
-            sh 'docker image prune -f || true'
+            script {
+                sh 'docker image prune -f || true'
+            }
         }
     }
 }
