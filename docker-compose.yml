@@ -9,7 +9,6 @@ services:
       - --innodb-log-buffer-size=32M
       - --max-connections=50
       - --innodb-flush-log-at-trx-commit=2
-      - --innodb-flush-method=O_DIRECT
       - --key-buffer-size=16M
       - --thread-cache-size=8
       - --table-open-cache=256
@@ -25,17 +24,14 @@ services:
     volumes:
       - mysql_data:/var/lib/mysql
     healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-pDevOps2026"]
-      timeout: 30s
-      retries: 15
-      interval: 10s
-      start_period: 60s
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "--silent"]
+      timeout: 10s
+      retries: 30
+      interval: 5s
+      start_period: 90s
     restart: unless-stopped
     networks:
       - app-network
-    # Strict memory limit for t3.micro
-    mem_limit: 280m
-    memswap_limit: 280m
 
   # Spring Boot Backend
   backend:
@@ -49,19 +45,15 @@ services:
     environment:
       - SPRING_PROFILES_ACTIVE=prod
       - SERVER_PORT=8088
-      # Database connection - Updated password without special chars
       - SPRING_DATASOURCE_URL=jdbc:mysql://db:3306/${MYSQL_DATABASE:-taskdb}
       - SPRING_DATASOURCE_USERNAME=${MYSQL_USER:-devops}
       - SPRING_DATASOURCE_PASSWORD=${MYSQL_PASSWORD:-DevOps2026}
       - SPRING_JPA_HIBERNATE_DDL_AUTO=update
       - SPRING_JPA_DATABASE_PLATFORM=org.hibernate.dialect.MySQLDialect
-      # Memory optimization
       - JAVA_OPTS=-Xmx256m -Xms128m
     restart: unless-stopped
     networks:
       - app-network
-    mem_limit: 350m
-    memswap_limit: 350m
 
   # React Frontend
   frontend:
@@ -78,8 +70,6 @@ services:
     memswap_limit: 150m
 
 volumes:
-  mysql_data:
-    driver: local
 
 networks:
   app-network:
