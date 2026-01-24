@@ -16,16 +16,13 @@ pipeline {
         // AWS EC2 configuration
         EC2_HOST = '43.205.116.130'
         EC2_USER = 'ubuntu'
-        SSH_KEY = credentials('ec2-ssh-key')
     }
     
     triggers {
-        // Trigger pipeline on GitHub push
         githubPush()
     }
     
     stages {
-        // Stage 1: Pull code from GitHub
         stage('Checkout Code') {
             steps {
                 echo 'Step 1: Pulling source code from GitHub repository'
@@ -33,12 +30,11 @@ pipeline {
             }
         }
         
-        // Stage 2: Build Docker images
         stage('Build Docker Images') {
             steps {
                 echo 'Step 2: Building Docker images for Frontend and Backend'
                 script {
-                    // Build backend image
+                    // Build Backend
                     dir('backend') {
                         sh """
                             docker build -t ${BACKEND_IMAGE}:latest .
@@ -46,7 +42,7 @@ pipeline {
                         """
                     }
                     
-                    // Build frontend image
+                    // Build Frontend
                     dir('frontend') {
                         sh """
                             docker build -t ${FRONTEND_IMAGE}:latest \
@@ -58,7 +54,6 @@ pipeline {
             }
         }
         
-        // Stage 3: Push images to DockerHub
         stage('Push to DockerHub') {
             steps {
                 echo 'Step 3: Pushing Docker images to DockerHub'
@@ -75,65 +70,99 @@ pipeline {
             }
         }
         
-        // Stage 4: Deploy to AWS EC2 using Ansible
- stage('Deploy to AWS EC2') {
-    steps {
-        echo 'Step 4: Deploying application to AWS EC2 using Ansible'
-        script {
-            dir('ansible') {
-                withCredentials([
-                    file(credentialsId: 'ec2-ssh-key', variable: 'SSH_KEY_FILE')
-                ]) {
-                    sh """
-                        # Update inventory with EC2 IP
-                        sed -i 's/<EC2_PUBLIC_IP>/${EC2_HOST}/g' inventory.ini
-                        
-                        # Set proper permissions for SSH key
-                        chmod 600 \${SSH_KEY_FILE}
-                        
-                        # Run Ansible playbook with SSH key
-                        ANSIBLE_HOST_KEY_CHECKING=False ansible-playbook -i inventory.ini deploy.yml \
-                          --private-key=\${SSH_KEY_FILE} \
-                          --extra-vars "docker_username=${DOCKER_USERNAME}" \
-                          --extra-vars "docker_password=${DOCKERHUB_CREDENTIALS_PSW}"
-                    """
+        stage('Deploy to AWS EC2') {
+            steps {
+                echo 'Step 4: Deploying application to AWS EC2 using Ansible'
+                script {
+                    dir('ansible') {
+                        withCredentials([
+                            file(credentialsId: 'ec2-ssh-key', variable: 'SSH_KEY_FILE')
+                        ]) {
+                            sh """
+                                # Set proper permissions for SSH key
+                                chmod 600 \${SSH_KEY_FILE}
+                                
+                                # Display configuration
+                                echo "=== Deployment Configuration ==="
+                                echo "Target Host: ${EC2_HOST}"
+                                echo "Docker Username: ${DOCKER_USERNAME}"
+                                echo "Using SSH Key: \${SSH_KEY_FILE}"
+                                echo "================================"
+                                
+                                # Display inventory
+                                echo "=== Ansible Inventory ==="
+                                cat inventory.ini
+                                echo "========================="
+                                
+                                # Run Ansible playbook
+                                ANSIBLE_HOST_KEY_CHECKING=False ansible-playbook \
+                                  -i inventory.ini \
+                                  deploy.yml \
+                                  --private-key=\${SSH_KEY_FILE} \
+                                  --extra-vars "docker_username=${DOCKER_USERNAME}" \
+                                  --extra-vars "docker_password=${DOCKERHUB_CREDENTIALS_PSW}" \
+                                  -v
+                            """
+                        }
+                    }
                 }
             }
         }
-    }
-}
         
-        // Stage 5: Verify deployment
         stage('Verify Deployment') {
             steps {
                 echo 'Step 5: Verifying application deployment'
-                sh """
-                    # Wait for services to stabilize
-                    sleep 30
+                script {
+                    sh """
+                        # Wait for services to stabilize
+                        echo "Waiting 30 seconds for services to start..."
+                        sleep 30
+                        
+                        # Test Frontend
+                        echo "Testing Frontend..."
+                        curl -f http://${EC2_HOST} -o /dev/null -w "Frontend Status: %{http_code}\\n" || echo "Frontend not responding"
+                        
+                        # Test Backend API
+                        echo "Testing Backend API..."
+                        curl -f http://${EC2_HOST}:8088/api -o /dev/null -w "Backend Status: %{http_code}\\n" || echo "Backend not responding"
+                        
+                        # Display running containers via SSH
+                        echo "Checking running containers on EC2..."
+                    """
                     
-                    # Check if frontend is accessible
-                    curl -f http://${EC2_HOST} || echo 'Warning: Frontend not responding'
-                    
-                    # Check if backend is accessible
-                    curl -f http://${EC2_HOST}:8088/api || echo 'Warning: Backend not responding'
-                """
+                    // Optional: SSH check
+                    withCredentials([
+                        file(credentialsId: 'ec2-ssh-key', variable: 'SSH_KEY_FILE')
+                    ]) {
+                        sh """
+                            chmod 600 \${SSH_KEY_FILE}
+                            ssh -o StrictHostKeyChecking=no -i \${SSH_KEY_FILE} ${EC2_USER}@${EC2_HOST} \
+                              "docker ps --format 'table {{.Names}}\\t{{.Status}}\\t{{.Ports}}'"
+                        """
+                    }
+                }
             }
         }
     }
     
     post {
         success {
-            echo 'Pipeline completed successfully'
+            echo '================================'
+            echo 'Pipeline completed successfully!'
+            echo '================================'
             echo "Frontend URL: http://${EC2_HOST}"
             echo "Backend API URL: http://${EC2_HOST}:8088/api"
             echo "Database: mysql://${EC2_HOST}:3306/taskdb"
+            echo '================================'
         }
         failure {
-            echo 'Pipeline failed. Check logs for details.'
+            echo '================================'
+            echo 'Pipeline failed!'
+            echo 'Check logs above for details.'
+            echo '================================'
         }
         cleanup {
             script {
-                // Cleanup Docker credentials and unused images
                 sh 'docker logout || true'
                 sh 'docker image prune -f || true'
             }
