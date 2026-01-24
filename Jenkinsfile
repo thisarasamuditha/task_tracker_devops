@@ -108,22 +108,22 @@ pipeline {
     
     post {
         success {
-            script {
-                echo '✅ Pipeline completed successfully!'
-                echo '🌐 Frontend: http://43.205.116.130'
-                echo '🔧 Backend: http://43.205.116.130:8088/api'
-                sh 'docker logout || true'
-            }
+            echo '✅ Pipeline completed successfully!'
+            echo '🌐 Frontend: http://43.205.116.130'
+            echo '🔧 Backend: http://43.205.116.130:8088/api'
         }
         failure {
-            script {
-                echo '❌ Pipeline failed!'
-                sh 'docker logout || true'
-            }
+            echo '❌ Pipeline failed!'
         }
-        always {
+        cleanup {
             script {
-                sh 'docker image prune -f || true'
+                // Cleanup runs in agent context
+                try {
+                    sh 'docker logout || true'
+                    sh 'docker image prune -f || true'
+                } catch (Exception e) {
+                    echo "Cleanup failed: ${e.message}"
+                }
             }
         }
     }
