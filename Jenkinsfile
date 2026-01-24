@@ -9,8 +9,6 @@ pipeline {
         BACKEND_IMAGE = "${DOCKER_USERNAME}/backend"
         
         BUILD_TAG = "${env.BUILD_NUMBER}"
-        
-        APP_DIR = '/home/ubuntu/app'  // docker-compose.yml location on EC2
     }
     
     triggers {
@@ -80,26 +78,28 @@ pipeline {
                 echo '🚀 Deploying application with docker-compose'
                 script {
                     sh """
-                        # Navigate to app directory
-                        cd ${APP_DIR}
+                        # Jenkins workspace already contains the code
+                        echo "Current directory: \$(pwd)"
+                        echo "Checking docker-compose.yml..."
+                        ls -la docker-compose.yml
                         
-                        # Pull latest images
+                        # Pull latest images from DockerHub
                         docker compose pull
                         
                         # Stop and remove old containers
-                        docker compose down
+                        docker compose down || true
                         
                         # Start new containers
                         docker compose up -d
                         
-                        # Wait for containers
+                        # Wait for containers to initialize
                         sleep 10
                         
                         # Verify all containers are running
                         docker compose ps
                         
                         # Check MySQL is ready
-                        docker logs mysql_db | grep -i "ready for connections" || echo "MySQL still initializing..."
+                        docker logs mysql_db 2>&1 | grep -i "ready for connections" || echo "MySQL still initializing..."
                     """
                 }
             }
