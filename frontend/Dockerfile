@@ -6,15 +6,15 @@ FROM node:22-alpine AS build
 WORKDIR /app
 
 # Install deps separately for caching
-COPY package.json package-lock.json* yarn.lock* pnpm-lock.yaml* ./
-RUN npm install --legacy-peer-deps || yarn install || echo "No lockfile for alternative manager"
+COPY package.json package-lock.json* ./
+RUN npm ci --legacy-peer-deps || npm install --legacy-peer-deps
 
 # Copy source
 COPY . .
 
 # Set build-time environment variable for API base URL
 # This gets embedded into the built JavaScript bundle
-ARG VITE_API_BASE_URL=http://localhost:8088/api
+ARG VITE_API_BASE_URL=http://43.205.116.130:8088/api
 ENV VITE_API_BASE_URL=$VITE_API_BASE_URL
 
 # Build static assets

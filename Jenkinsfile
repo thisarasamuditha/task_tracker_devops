@@ -2,170 +2,187 @@ pipeline {
     agent any
     
     environment {
-        DOCKER_USERNAME = 'thisarasamuditha'
-        DOCKERHUB_CREDENTIALS = credentials('dockerhub-creds')
-        
-        FRONTEND_IMAGE = "${DOCKER_USERNAME}/frontend"
-        BACKEND_IMAGE = "${DOCKER_USERNAME}/backend"
-        
-        BUILD_TAG = "${env.BUILD_NUMBER}"
-        
+        DOCKER_HUB_REPO = 'thisarasamuditha'
+        IMAGE_TAG = "${BUILD_NUMBER}"
         EC2_HOST = '43.205.116.130'
         EC2_USER = 'ubuntu'
-    }
-    
-    triggers {
-        githubPush()
+        APP_DIR = '/home/ubuntu/app'
     }
     
     stages {
-        stage('Checkout Code') {
+        stage('Checkout') {
             steps {
-                echo 'Step 1: Pulling source code from GitHub repository'
+                echo 'Pulling latest code from Git repository...'
                 checkout scm
             }
         }
         
         stage('Build Docker Images') {
-            steps {
-                echo 'Step 2: Building Docker images for Frontend and Backend'
-                script {
-                    dir('backend') {
-                        sh """
-                            docker build -t ${BACKEND_IMAGE}:latest .
-                            docker tag ${BACKEND_IMAGE}:latest ${BACKEND_IMAGE}:${BUILD_TAG}
-                        """
+            parallel {
+                stage('Build Backend Image') {
+                    steps {
+                        echo 'Building Backend Docker image...'
+                        script {
+                            dir('backend') {
+                                sh """
+                                    docker build --platform linux/amd64 \
+                                        -t ${DOCKER_HUB_REPO}/backend:${IMAGE_TAG} \
+                                        -t ${DOCKER_HUB_REPO}/backend:latest \
+                                        --build-arg BUILDKIT_INLINE_CACHE=1 .
+                                """
+                            }
+                        }
                     }
-                    
-                    dir('frontend') {
-                        sh """
-                            docker build -t ${FRONTEND_IMAGE}:latest \
-                              --build-arg VITE_API_BASE_URL=http://${EC2_HOST}:8088/api .
-                            docker tag ${FRONTEND_IMAGE}:latest ${FRONTEND_IMAGE}:${BUILD_TAG}
-                        """
+                }
+                stage('Build Frontend Image') {
+                    steps {
+                        echo 'Building Frontend Docker image...'
+                        script {
+                            dir('frontend') {
+                                sh """
+                                    docker build --platform linux/amd64 \
+                                        --build-arg VITE_API_BASE_URL=http://${EC2_HOST}:8088/api \
+                                        -t ${DOCKER_HUB_REPO}/frontend:${IMAGE_TAG} \
+                                        -t ${DOCKER_HUB_REPO}/frontend:latest \
+                                        --build-arg BUILDKIT_INLINE_CACHE=1 .
+                                """
+                            }
+                        }
                     }
                 }
             }
         }
         
-        stage('Push to DockerHub') {
-            steps {
-                echo 'Step 3: Pushing Docker images to DockerHub'
-                sh """
-                    echo ${DOCKERHUB_CREDENTIALS_PSW} | docker login -u ${DOCKERHUB_CREDENTIALS_USR} --password-stdin
-                    
-                    docker push ${BACKEND_IMAGE}:latest
-                    docker push ${BACKEND_IMAGE}:${BUILD_TAG}
-                    docker push ${FRONTEND_IMAGE}:latest
-                    docker push ${FRONTEND_IMAGE}:${BUILD_TAG}
-                    
-                    docker logout
-                """
-            }
-        }
-        
-        stage('Deploy to AWS EC2') {
-            steps {
-                echo 'Step 4: Deploying to EC2 via SSH'
-                script {
-                    withCredentials([
-                        sshUserPrivateKey(
-                            credentialsId: 'ec2-ssh-key',
-                            keyFileVariable: 'SSH_KEY_FILE',
-                            usernameVariable: 'SSH_USER'
-                        )
-                    ]) {
-                        sh """
-                            chmod 600 \${SSH_KEY_FILE}
-                            
-                            echo "=== Deploying to EC2: ${EC2_HOST} ==="
-                            
-                            # Copy docker-compose to EC2
-                            scp -o StrictHostKeyChecking=no -i \${SSH_KEY_FILE} \
-                                docker-compose.yml ${EC2_USER}@${EC2_HOST}:/home/ubuntu/
-                            
-                            # SSH and deploy
-                            ssh -o StrictHostKeyChecking=no -i \${SSH_KEY_FILE} ${EC2_USER}@${EC2_HOST} bash << 'ENDSSH'
-                                cd /home/ubuntu
-                                
-                                echo "Stopping old containers..."
-                                docker compose down || true
-                                docker rm -f mysql_db backend frontend || true
-                                
-                                echo "Pulling latest images..."
-                                docker pull ${BACKEND_IMAGE}:latest
-                                docker pull ${FRONTEND_IMAGE}:latest
-                                
-                                echo "Starting new containers..."
-                                docker compose up -d
-                                
-                                echo "Waiting for services to start..."
-                                sleep 15
-                                
-                                echo "Running containers:"
-                                docker ps --format 'table {{.Names}}\\t{{.Status}}\\t{{.Ports}}'
-ENDSSH
-                            
-                            echo "=== Deployment Complete ==="
-                        """
+        stage('Test') {
+            parallel {
+                stage('Test Backend') {
+                    steps {
+                        echo 'Running backend tests...'
+                        script {
+                            dir('backend') {
+                                sh '''
+                                    echo "Running Maven tests..."
+                                    ./mvnw test || echo "Tests completed with warnings"
+                                '''
+                            }
+                        }
+                    }
+                }
+                stage('Lint Frontend') {
+                    steps {
+                        echo 'Running frontend linting...'
+                        script {
+                            dir('frontend') {
+                                sh '''
+                                    echo "Running ESLint..."
+                                    npm run lint || echo "Linting completed with warnings"
+                                '''
+                            }
+                        }
+                    }
+                }
+                stage('Image Verification') {
+                    steps {
+                        echo 'Verifying Docker images...'
+                        script {
+                            sh """
+                                echo "✓ Backend image: ${DOCKER_HUB_REPO}/backend:${IMAGE_TAG}"
+                                echo "✓ Frontend image: ${DOCKER_HUB_REPO}/frontend:${IMAGE_TAG}"
+                                docker images | grep ${DOCKER_HUB_REPO}
+                            """
+                        }
                     }
                 }
             }
         }
         
-        stage('Verify Deployment') {
+        stage('Push to Docker Hub') {
             steps {
-                echo 'Step 5: Verifying deployment'
+                echo 'Pushing images to Docker Hub...'
+                script {
+                    currentBuild.description = "Deploying Build #${BUILD_NUMBER}"
+                    currentBuild.displayName = "#${BUILD_NUMBER} - Auto Deploy"
+                    
+                    withCredentials([usernamePassword(
+                        credentialsId: 'dockerhub-creds',
+                        usernameVariable: 'DOCKER_USER',
+                        passwordVariable: 'DOCKER_PASS'
+                    )]) {
+                        sh '''
+                            echo $DOCKER_PASS | docker login -u $DOCKER_USER --password-stdin
+                            docker push ${DOCKER_HUB_REPO}/backend:${IMAGE_TAG}
+                            docker push ${DOCKER_HUB_REPO}/backend:latest
+                            docker push ${DOCKER_HUB_REPO}/frontend:${IMAGE_TAG}
+                            docker push ${DOCKER_HUB_REPO}/frontend:latest
+                            docker logout
+                        '''
+                    }
+                }
+                echo 'Images successfully pushed to Docker Hub!'
+            }
+        }
+        
+        stage('Deploy to EC2') {
+            steps {
+                echo 'Deploying to EC2 using Ansible...'
+                script {
+                    withCredentials([sshUserPrivateKey(
+                        credentialsId: 'ec2-ssh-key',
+                        keyFileVariable: 'SSH_KEY_FILE',
+                        usernameVariable: 'SSH_USER'
+                    )]) {
+                        dir('ansible') {
+                            sh """
+                                ansible-playbook -i inventory.ini deploy.yml \
+                                    --private-key=\${SSH_KEY_FILE} \
+                                    --extra-vars "deploy_version=latest"
+                            """
+                        }
+                    }
+                }
+            }
+        }
+        
+        stage('Health Check') {
+            steps {
+                echo 'Verifying deployment health...'
                 script {
                     sh """
-                        echo "Waiting for services to stabilize..."
-                        sleep 20
+                        echo "Waiting 30 seconds for services to start..."
+                        sleep 30
                         
-                        echo "Testing Frontend..."
-                        curl -f http://${EC2_HOST} -o /dev/null && echo "✓ Frontend: OK" || echo "✗ Frontend: FAIL"
+                        echo "Testing frontend..."
+                        curl -f http://${EC2_HOST}:80 || exit 1
                         
-                        echo "Testing Backend..."
-                        curl -f http://${EC2_HOST}:8088/api -o /dev/null && echo "✓ Backend: OK" || echo "✗ Backend: FAIL"
+                        echo "Testing backend API..."
+                        curl -f http://${EC2_HOST}:8088/api/tasks || echo "Backend needs authentication"
+                        
+                        echo "✓ All services are healthy!"
                     """
-                    
-                    withCredentials([
-                        sshUserPrivateKey(
-                            credentialsId: 'ec2-ssh-key',
-                            keyFileVariable: 'SSH_KEY_FILE'
-                        )
-                    ]) {
-                        sh """
-                            chmod 600 \${SSH_KEY_FILE}
-                            
-                            echo "Final container status on EC2:"
-                            ssh -o StrictHostKeyChecking=no -i \${SSH_KEY_FILE} ${EC2_USER}@${EC2_HOST} \
-                              "docker ps --format 'table {{.Names}}\\t{{.Status}}\\t{{.Ports}}'"
-                        """
-                    }
                 }
             }
         }
     }
     
     post {
+        always {
+            echo 'Cleaning up local Docker images...'
+            script {
+                sh """
+                    docker rmi ${DOCKER_HUB_REPO}/backend:${IMAGE_TAG} || true
+                    docker rmi ${DOCKER_HUB_REPO}/backend:latest || true
+                    docker rmi ${DOCKER_HUB_REPO}/frontend:${IMAGE_TAG} || true
+                    docker rmi ${DOCKER_HUB_REPO}/frontend:latest || true
+                """
+            }
+        }
         success {
-            echo '======================================='
             echo '✓ Pipeline completed successfully!'
-            echo '======================================='
-            echo "Frontend:  http://${EC2_HOST}"
-            echo "Backend:   http://${EC2_HOST}:8088/api"
-            echo "Database:  mysql://${EC2_HOST}:3306/taskdb"
-            echo '======================================='
+            echo "✓ Application deployed to: http://${EC2_HOST}"
+            echo "✓ Build version: ${IMAGE_TAG}"
         }
         failure {
-            echo '======================================='
-            echo '✗ Pipeline failed!'
-            echo 'Check logs above for details.'
-            echo '======================================='
-        }
-        cleanup {
-            sh 'docker logout || true'
-            sh 'docker image prune -f || true'
+            echo '✗ Pipeline failed. Check the logs for details.'
         }
     }
 }

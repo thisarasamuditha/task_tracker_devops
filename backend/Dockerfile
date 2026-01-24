@@ -7,12 +7,11 @@ WORKDIR /workspace
 
 # Copy pom and resolve deps first to leverage Docker layer cache
 COPY pom.xml ./
-# Skip offline mode which can be flaky; just resolve dependencies during build
-# RUN mvn -B -q -DskipTests dependency:go-offline
+RUN mvn -B dependency:go-offline -DskipTests
 
-# Copy source and build (Maven will download deps during this phase)
+# Copy source and build
 COPY src ./src
-RUN mvn -B -DskipTests clean package -Dmaven.wagon.http.retryHandler.count=3
+RUN mvn -B -DskipTests clean package
 
 # 2) Runtime stage
 FROM eclipse-temurin:17-jre AS runtime
