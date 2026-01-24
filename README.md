@@ -804,5 +804,5 @@ This project is for educational purposes as part of a university DevOps course.
 ---
 
 ## Author
-
+Thisara Samuditha
 University DevOps Project - 2026
