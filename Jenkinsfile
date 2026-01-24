@@ -86,8 +86,13 @@ pipeline {
                         # Pull latest images from DockerHub
                         docker compose pull
                         
-                        # Stop and remove old containers
-                        docker compose down || true
+                        # Force stop and remove any existing containers with these names
+                        echo "Cleaning up old containers..."
+                        docker stop mysql_db backend frontend 2>/dev/null || true
+                        docker rm mysql_db backend frontend 2>/dev/null || true
+                        
+                        # Also remove containers from this project
+                        docker compose down -v || true
                         
                         # Start new containers
                         docker compose up -d
