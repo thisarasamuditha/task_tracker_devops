@@ -76,24 +76,32 @@ pipeline {
         }
         
         // Stage 4: Deploy to AWS EC2 using Ansible
-        stage('Deploy to AWS EC2') {
-            steps {
-                echo 'Step 4: Deploying application to AWS EC2 using Ansible'
-                script {
-                    dir('ansible') {
-                        sh """
-                            # Update inventory with EC2 IP
-                            sed -i 's/<EC2_PUBLIC_IP>/${EC2_HOST}/g' inventory.ini
-                            
-                            # Run Ansible playbook
-                            ansible-playbook -i inventory.ini deploy.yml \
-                              --extra-vars "docker_username=${DOCKER_USERNAME}" \
-                              --extra-vars "docker_password=${DOCKERHUB_CREDENTIALS_PSW}"
-                        """
-                    }
+ stage('Deploy to AWS EC2') {
+    steps {
+        echo 'Step 4: Deploying application to AWS EC2 using Ansible'
+        script {
+            dir('ansible') {
+                withCredentials([
+                    file(credentialsId: 'ec2-ssh-key', variable: 'SSH_KEY_FILE')
+                ]) {
+                    sh """
+                        # Update inventory with EC2 IP
+                        sed -i 's/<EC2_PUBLIC_IP>/${EC2_HOST}/g' inventory.ini
+                        
+                        # Set proper permissions for SSH key
+                        chmod 600 \${SSH_KEY_FILE}
+                        
+                        # Run Ansible playbook with SSH key
+                        ANSIBLE_HOST_KEY_CHECKING=False ansible-playbook -i inventory.ini deploy.yml \
+                          --private-key=\${SSH_KEY_FILE} \
+                          --extra-vars "docker_username=${DOCKER_USERNAME}" \
+                          --extra-vars "docker_password=${DOCKERHUB_CREDENTIALS_PSW}"
+                    """
                 }
             }
         }
+    }
+}
         
         // Stage 5: Verify deployment
         stage('Verify Deployment') {
