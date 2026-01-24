@@ -16,6 +16,7 @@ pipeline {
         // AWS EC2 configuration
         EC2_HOST = '43.205.116.130'
         EC2_USER = 'ubuntu'
+        SSH_KEY = credentials('ec2-ssh-key')
     }
     
     triggers {
@@ -39,19 +40,19 @@ pipeline {
                 script {
                     // Build backend image
                     dir('backend') {
-                        sh '''
+                        sh """
                             docker build -t ${BACKEND_IMAGE}:latest .
                             docker tag ${BACKEND_IMAGE}:latest ${BACKEND_IMAGE}:${BUILD_TAG}
-                        '''
+                        """
                     }
                     
                     // Build frontend image
                     dir('frontend') {
-                        sh '''
+                        sh """
                             docker build -t ${FRONTEND_IMAGE}:latest \
                               --build-arg VITE_API_BASE_URL=http://${EC2_HOST}:8088/api .
                             docker tag ${FRONTEND_IMAGE}:latest ${FRONTEND_IMAGE}:${BUILD_TAG}
-                        '''
+                        """
                     }
                 }
             }
@@ -61,7 +62,7 @@ pipeline {
         stage('Push to DockerHub') {
             steps {
                 echo 'Step 3: Pushing Docker images to DockerHub'
-                sh '''
+                sh """
                     echo ${DOCKERHUB_CREDENTIALS_PSW} | docker login -u ${DOCKERHUB_CREDENTIALS_USR} --password-stdin
                     
                     docker push ${BACKEND_IMAGE}:latest
@@ -70,26 +71,25 @@ pipeline {
                     docker push ${FRONTEND_IMAGE}:${BUILD_TAG}
                     
                     docker logout
-                '''
+                """
             }
         }
         
         // Stage 4: Deploy to AWS EC2 using Ansible
-        stage('Deploy to EC2') {
+        stage('Deploy to AWS EC2') {
             steps {
-                echo 'Step 4: Deploying to EC2 using Ansible'
+                echo 'Step 4: Deploying application to AWS EC2 using Ansible'
                 script {
                     dir('ansible') {
-                        withCredentials([file(credentialsId: 'ec2-ssh-key', variable: 'SSH_KEY_FILE')]) {
-                            sh '''
-                                sed -i 's/<EC2_PUBLIC_IP>/${EC2_HOST}/g' inventory.ini
-                                chmod 600 ${SSH_KEY_FILE}
-                                ANSIBLE_HOST_KEY_CHECKING=False ansible-playbook -i inventory.ini deploy.yml \
-                                  --private-key=${SSH_KEY_FILE} \
-                                  --extra-vars "docker_username=${DOCKER_USERNAME}" \
-                                  --extra-vars "docker_password=${DOCKERHUB_CREDENTIALS_PSW}"
-                            '''
-                        }
+                        sh """
+                            # Update inventory with EC2 IP
+                            sed -i 's/<EC2_PUBLIC_IP>/${EC2_HOST}/g' inventory.ini
+                            
+                            # Run Ansible playbook
+                            ansible-playbook -i inventory.ini deploy.yml \
+                              --extra-vars "docker_username=${DOCKER_USERNAME}" \
+                              --extra-vars "docker_password=${DOCKERHUB_CREDENTIALS_PSW}"
+                        """
                     }
                 }
             }
@@ -99,11 +99,16 @@ pipeline {
         stage('Verify Deployment') {
             steps {
                 echo 'Step 5: Verifying application deployment'
-                sh '''
+                sh """
+                    # Wait for services to stabilize
                     sleep 30
+                    
+                    # Check if frontend is accessible
                     curl -f http://${EC2_HOST} || echo 'Warning: Frontend not responding'
+                    
+                    # Check if backend is accessible
                     curl -f http://${EC2_HOST}:8088/api || echo 'Warning: Backend not responding'
-                '''
+                """
             }
         }
     }
@@ -120,6 +125,7 @@ pipeline {
         }
         cleanup {
             script {
+                // Cleanup Docker credentials and unused images
                 sh 'docker logout || true'
                 sh 'docker image prune -f || true'
             }
