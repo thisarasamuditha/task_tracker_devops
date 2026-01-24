@@ -1,102 +1,78 @@
-# Jenkins CI/CD Setup Guide - Complete Step-by-Step
+# Jenkins CI/CD Setup Guide for DevOps Pipeline
 
-## Overview
-This guide provides **TWO approaches** for setting up Jenkins for your CI/CD pipeline:
+## Pipeline Architecture Overview
 
-**Approach A:** Jenkins on AWS EC2 (Production - 24/7 cloud server)  
-**Approach B:** Jenkins on Local WSL with ngrok (Development/Learning - Free)
+This guide sets up a complete CI/CD pipeline following these steps:
 
-Choose the approach that fits your needs.
-
----
-
-## Approach Comparison
-
-| Feature | AWS EC2 | Local WSL + ngrok |
-|---------|---------|-------------------|
-| **Cost** | ~$15-30/month | Free (ngrok free tier) |
-| **Availability** | 24/7 | Only when PC is on |
-| **Performance** | High | Depends on local PC |
-| **Setup Complexity** | Medium | Low |
-| **Use Case** | Production | Learning/Development |
-| **Public Access** | Yes | Yes (via ngrok) |
-| **IP Changes** | Stable | Changes on restart |
+1. Developer pushes code to GitHub
+2. GitHub webhook triggers Jenkins CI
+3. Jenkins builds Docker images (Frontend + Backend)
+4. Images pushed to Docker Hub
+5. Terraform provisions AWS EC2 VM
+6. Ansible pulls images and deploys containers
+7. Frontend (React) and Backend (Spring Boot) run on AWS EC2
+8. Backend connects to MySQL database within the same EC2 instance
+9. Users access application via HTTP
 
 ---
-
-# APPROACH A: Jenkins on AWS EC2
 
 ## Prerequisites
-- Existing AWS EC2 instance with your application
-- Ubuntu 22.04 LTS or similar Linux distribution
-- At least 2 GB RAM (t3.small, t3.medium, or larger)
-- Basic knowledge of Linux commands
-- SSH access to your EC2 instance
-- DockerHub account (for pushing images)
-- Existing SSH key pair for your instance
+
+- AWS account with EC2 access
+- GitHub repository with your application code
+- DockerHub account
+- SSH key pair for EC2 access
+- Basic Linux command knowledge
 
 ---
 
-## Part 1: Prepare Your Existing EC2 Instance
+## Part 1: AWS EC2 Setup for Jenkins
 
-### Step 1.1: Update Security Group
+### Step 1: Create EC2 Instance for Jenkins
+
+**Note:** This is separate from your application EC2. Jenkins will deploy TO your application EC2.
 
 1. **Login to AWS Console**
-   - Go to https://console.aws.amazon.com
-   - Navigate to **EC2 Dashboard**
+   - Navigate to EC2 Dashboard
+   - Click "Launch Instance"
 
-2. **Update Security Group for Your Instance**
-   - Click on your running instance
-   - Go to **Security** tab
-   - Click on the security group link
-   - Click **Edit inbound rules**
-   - **Add the following rule:**
+2. **Configure Instance:**
+   - Name: `jenkins-server`
+   - AMI: Ubuntu Server 22.04 LTS (Free tier eligible)
+   - Instance type: `t3.small` (2 GB RAM minimum for Jenkins)
+   - Key pair: Create new or use existing
+   - Security Group: Create with following rules:
 
-   | Type | Protocol | Port | Source | Description |
-   |------|----------|------|--------|-------------|
-   | Custom TCP | TCP | 8088 | 0.0.0.0/0 | Jenkins Web UI |
+   | Type | Port | Source | Description |
+   |------|------|--------|-------------|
+   | SSH | 22 | Your IP | SSH access |
+   | Custom TCP | 8080 | 0.0.0.0/0 | Jenkins Web UI |
+   | HTTP | 80 | 0.0.0.0/0 | Optional |
 
-   - Click **Save rules**
+3. **Launch Instance** and note the Public IP
 
-**Note:** Your existing rules for ports 80 (HTTP), 8088 (Backend), and 22 (SSH) should remain unchanged.
-
-### Step 1.2: Connect to Your EC2 Instance
-
-**Connect using your existing SSH key:**
+### Step 2: Connect to Jenkins Server
 
 ```bash
-# Navigate to your key location
-cd terraform  # or wherever your key is stored
+# Set correct permissions for SSH key
+chmod 400 your-key.pem
 
-# Set permissions (if not already set)
-chmod 400 devops-key
-
-# Connect to your existing instance
-ssh -i devops-key ubuntu@YOUR_EC2_PUBLIC_IP
-```
-
-**For Windows PowerShell:**
-```powershell
-# Navigate to key location
-cd terraform
-
-# Connect
-ssh -i devops-key ubuntu@YOUR_EC2_PUBLIC_IP
+# Connect to Jenkins EC2
+ssh -i your-key.pem ubuntu@JENKINS_EC2_PUBLIC_IP
 ```
 
 ---
-Your Existing EC2 Instance
 
-### Step 2.1: Update System
+## Part 2: Install Jenkins on EC2
 
-**Important:** If your application is currently running, this installation won't affect it.
+### Step 1: Update System
 
-### Step 2.1: Update System
 ```bash
 sudo apt update && sudo apt upgrade -y
 ```
 
-### Step 2.2: Install Java (Jenkins Requirement)
+### Step 2: Install Java (Required for Jenkins)
+
 ```bash
 # Install OpenJDK 17
 sudo apt install openjdk-17-jdk -y
@@ -121,6 +97,30 @@ echo "deb [signed-by=/usr/share/keyrings/jenkins-keyring.asc]" \
   https://pkg.jenkins.io/debian-stable binary/ | sudo tee \
   /etc/apt/sources.list.d/jenkins.list > /dev/null
 
+# Install Java 17
+sudo apt install openjdk-17-jdk -y
+
+# Verify installation
+java -version
+```
+
+Expected output:
+```
+openjdk version "17.x.x"
+```
+
+### Step 3: Install Jenkins
+
+```bash
+# Add Jenkins repository key
+curl -fsSL https://pkg.jenkins.io/debian-stable/jenkins.io-2023.key | sudo tee \
+  /usr/share/keyrings/jenkins-keyring.asc > /dev/null
+
+# Add Jenkins repository
+echo deb [signed-by=/usr/share/keyrings/jenkins-keyring.asc] \
+  https://pkg.jenkins.io/debian-stable binary/ | sudo tee \
+  /etc/apt/sources.list.d/jenkins.list > /dev/null
+
 # Update package list
 sudo apt update
 
@@ -128,7 +128,8 @@ sudo apt update
 sudo apt install jenkins -y
 ```
 
-### Step 2.4: Start Jenkins Service
+### Step 4: Start Jenkins Service
+
 ```bash
 # Start Jenkins
 sudo systemctl start jenkins
@@ -140,28 +141,17 @@ sudo systemctl enable jenkins
 sudo systemctl status jenkins
 ```
 
-**Expected Output:**
+Expected output:
 ```
-● jenkins.service - Jenkins Continuous Integration Server
-     Loaded: loaded (/lib/systemd/system/jenkins.service; enabled)
-     Active: active (running)
-```Verify or Install Docker
-
-### Step 3.1: Check if Docker is Already Installed
-
-```bash
-# Check Docker version
-docker --version
+Active: active (running)
 ```
 
-**If Docker is already installed**, you'll see the version. Skip to Step 3.2.
-
-**If Docker is NOT installed**, run these commands:
-
+---
 
 ## Part 3: Install Docker on Jenkins Server
 
-### Step 3.1: Install Docker
+### Step 1: Install Docker
+
 ```bash
 # Install prerequisites
 sudo apt install apt-transport-https ca-certificates curl software-properties-common -y
@@ -174,30 +164,27 @@ echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/docke
 
 # Update and install Docker
 sudo apt update
-sudo apt install docker-ce docker-ce-cli containerd.io -y
+sudo apt install docker-ce docker-ce-cli containerd.io docker-compose-plugin -y
 
 # Verify Docker installation
 docker --version
+docker compose version
 ```
 
-### Step 3.2: Configure Docker for Jenkins
+### Step 2: Allow Jenkins to Use Docker
+
 ```bash
 # Add Jenkins user to docker group
 sudo usermod -aG docker jenkins
 
-# Add ubuntu user to docker group (optional)
-sudo usermod -aG docker $USER
-
-# Restart Jenkins
-sudo systemctl restart jenk(Optional for Same-Server Deployment)
-
-**Note:** Since Jenkins and your application are on the same server, Ansible is optional. You can deploy directly using Docker commands. However, we'll install it for consistency.
+# Restart Jenkins to apply group changes
+sudo systemctl restart jenkins
 
 # Verify Jenkins can use Docker
 sudo -u jenkins docker ps
 ```
 
-**Expected Output:** (empty list is fine)
+Expected output: (empty list is fine)
 ```
 CONTAINER ID   IMAGE     COMMAND   CREATED   STATUS    PORTS     NAMES
 ```
@@ -210,68 +197,49 @@ CONTAINER ID   IMAGE     COMMAND   CREATED   STATUS    PORTS     NAMES
 # Install Ansible
 sudo apt install ansible -y
 
-# Verify installation
-ansible --version
-```
 
-**Expected Output:**
-```
-ansible [core 2.x.x]
-```
+### Step 1: Access Jenkins Web Interface
 
----
-
-## Part 5: Access and Configure Jenkins
-
-### Step 5.1: Access Jenkins Web Interface
-
-1. Open browser and navigate to:
+1. Open browser and go to:
    ```
-   http://YOUR_EC2_PUBLIC_IP:8088
+   http://JENKINS_EC2_PUBLIC_IP:8080
    ```
 
 2. **Unlock Jenkins:**
-   - You'll see "Unlock Jenkins" page
-   - Get the initial admin password:
+   - Get initial admin password:
    ```bash
    sudo cat /var/lib/jenkins/secrets/initialAdminPassword
    ```
-   - Copy the password and paste it into the browser
+   - Copy and paste it in browser
 
 3. **Install Suggested Plugins:**
-   - Click **Install suggested plugins**
-   - Wait for installation to complete (5-10 minutes)
+   - Click "Install suggested plugins"
+   - Wait for completion (5-10 minutes)
 
-4. **Create First Admin User:**
-   - Username: `admin` (or your choice)
-   - Password: Create a strong password
+4. **Create Admin User:**
+   - Username: `admin`
+   - Password: (create strong password)
    - Full name: Your name
    - Email: Your email
-   - Click **Save and Continue**
+   - Click "Save and Continue"
 
 5. **Instance Configuration:**
-   - Jenkins URL: `http://YOUR_EC2_PUBLIC_IP:8088/`
-   - Click **Save and Finish**
-   - Click **Start using Jenkins**
+   - Jenkins URL: `http://JENKINS_EC2_PUBLIC_IP:8080/`
+   - Click "Save and Finish"
 
-### Step 5.2: Install Required Jenkins Plugins
+### Step 2: Install Required Plugins
 
-1. **Navigate to Plugin Manager:**
-   - Go to **Manage Jenkins** → **Manage Plugins**
-   - Click on **Available plugins** tab
+1. **Go to:** Manage Jenkins → Manage Plugins → Available plugins
 
-2. **Install the following plugins:**
-   - Search and select each plugin, then click **Install without restart**
-
-   **Required Plugins:**
-   - `Docker Pipeline`
-   - `Docker`
-   - `Git`
-   - `GitHub`
-   - `Pipeline`
-   - `SSH Agent`
-   - `Credentials Binding`
-   - `Ansible`
+2. **Install these plugins:**
+   - Docker Pipeline
+   - Docker
+   - Git
+   - GitHub
+   - Pipeline
+   - SSH Agent
+   - Credentials Binding
+   - Ansible
 
 3. **Restart Jenkins:**
    ```bash
@@ -282,135 +250,208 @@ ansible [core 2.x.x]
 
 ## Part 6: Configure Jenkins Credentials
 
-### Step 6.1: Add DockerHub Credentials
+### Step 1: Add DockerHub Credentials
 
-1. **Navigate to Credentials:**
-   - Go to **Manage Jenkins** → **Credentials**
-   - Click on Setup Local Deployment (Jenkins and App on Same Server)
+1. Go to: Manage Jenkins → Credentials → System → Global credentials
+2. Click "Add Credentials"
+3. Configure:
+   - Kind: Username with password
+   - Username: (your DockerHub username)
+   - Password: (your DockerHub password or token)
+   - ID: `dockerhub-creds`
+   - Description: DockerHub credentials
+4. Click "Create"
 
-Since Jenkins and your application are on the same server, we don't need SSH keys for deployment. Jenkins will deploy directly using Docker commands.
+### Step 2: Add EC2 SSH Key
 
-**Skip SSH key generation** - not needed for same-server deployment.
-   - Paste the entire private key (including BEGIN and END lines)
-   - Click **Create**
-
-### Step 6.3: Add EC2 IP Address
-
-1. **Add Secret Text:**
-   - **Kind:** Secret text
-   - **Scope:** Global
-   - **Secret:** Your application server public IP (e.g., `54.123.45.67`)
-   - **ID:** `ec2-ip`
-   - **Description:** Application Server IP
-   - Click **Create**
+1. Click "Add Credentials" again
+2. Configure:
+   - Kind: SSH Username with private key
+   - ID: `ec2-ssh-key`
+   - Description: EC2 SSH Key
+   - Username: `ubuntu`
+   - Private Key: Enter directly
+   - Paste your SSH private key content
+3. Click "Create"
 
 ---
 
-## Part 7: Configure GitHub Webhook
+## Part 7: Setup GitHub Webhook
 
-### Step 7.1: Generate Jenkins API Token
+### Step 1: In GitHub Repository
 
-1. **In Jenkins:**
-   - Click on your username (top right)
-   - Click **Configure**
-   - Scroll to **API Token**
-   - Click **Add new Token**
-   - Name: `github-webhook`
-   - Click **Generate**
-   - **Copy the token** (you won't see it again)
-
-### Step 7.2: Setup GitHub Webhook
-
-1. **In GitHub Repository:**
-   - Go to your repository
-   - Click **Settings** → **Webhooks**
-   - Click **Add webhook**
-
-2. **Configure Webhook:**
-   - **Payload URL:** `http://YOUR_JENKINS_IP:8088/github-webhook/`
-   - **Content type:** `application/json`
-   - **Secret:** Leave empty (or use Jenkins token)
-   - **Which events:** Select "Just the push event"
-   - **Active:** Check
-   - Click **Add webhook**
+1. Go to your repository Settings
+2. Click Webhooks → Add webhook
+3. Configure:
+   - Payload URL: `http://JENKINS_EC2_PUBLIC_IP:8080/github-webhook/`
+   - Content type: `application/json`
+   - Events: Just the push event
+   - Active: Check
+4. Click "Add webhook"
 
 ---
 
 ## Part 8: Create Jenkins Pipeline Job
 
-### Step 8.1: Create New Pipeline
+### Step 1: Create Pipeline
 
-1. **In Jenkins Dashboard:**
-   - Click **New Item**
-   - **Name:** `devops-project-pipeline`
-   - **Type:** Select **Pipeline**
-   - Click **OK**
+1. Jenkins Dashboard → New Item
+2. Name: `devops-project-pipeline`
+3. Type: Pipeline
+4. Click OK
 
-### Step 8.2: Configure Pipeline
+### Step 2: Configure Job
 
-1. **General Settings:**
-   - ☑ **GitHub project**
-   - Project url: `https://github.com/YOUR_USERNAME/YOUR_REPO`
+1. **General:**
+   - Check "GitHub project"
+   - Project URL: `https://github.com/YOUR_USERNAME/YOUR_REPO`
 
 2. **Build Triggers:**
-   - ☑ **GitHub hook trigger for GITScm polling**
+   - Check "GitHub hook trigger for GITScm polling"
 
-3. **Pipeline Configuration:**
-   - **Definition:** Pipeline script from SCM
-   - **SCM:** Git
-   - **Repository URL:** `https://github.com/YOUR_USERNAME/YOUR_REPO.git`
-   - **Credentials:** None (for public repos) or add GitHub credentials
-   - **Branch:** `*/main` (or your branch name)
-   - **Script Path:** `Jenkinsfile`
+3. **Pipeline:**
+   - Definition: Pipeline script from SCM
+   - SCM: Git
+   - Repository URL: `https://github.com/YOUR_USERNAME/YOUR_REPO.git`
+   - Branch: `*/main` or `*/master`
+   - Script Path: `Jenkinsfile`
 
-4. **Click Save**
+4. Click "Save"
 
 ---
 
-## Part 9: Create Jenkinsfile
+## Part 9: Verify Pipeline Components
 
-### Step 9.1: Create Jenkinsfile in Your Project Root
+### Check 1: Verify Ansible Inventory
 
-Create a file named `Jenkinsfile` in your project root directory:
+Ensure `ansible/inventory.ini` contains:
 
-```groovy
-pipeline {
-    agent any
-    
-    environment {
-        DOCKERHUB_CREDENTIALS = credentials('dockerhub-credentials')
-        DOCKERHUB_USERNAME = 'YOUR_DOCKERHUB_USERNAME'
-        EC2_IP = credentials('ec2-ip')
-        FRONTEND_IMAGE = "${DOCKERHUB_USERNAME}/devops-frontend"
-        BACKEND_IMAGE = "${DOCKERHUB_USERNAME}/devops-backend"
-    }
-    
-    stages {
-        stage('Checkout') {
-            steps {
-                echo 'Checking out code from GitHub...'
-                checkout scm
-            }
-        }
-        
-        stage('Build Frontend') {
-            steps {
-                echo 'Building Frontend Docker Image...'
-                dir('frontend') {
-                    sh '''
-                        docker build -t ${FRONTEND_IMAGE}:${BUILD_NUMBER} .
-                        docker tag ${FRONTEND_IMAGE}:${BUILD_NUMBER} ${FRONTEND_IMAGE}:latest
-                    '''
-                }
-            }
-        }
-        
-        stage('Build Backend') {
-            steps {
-                echo 'Building Backend Docker Image...'
-                dir('backend') {
-                    sh '''
-                        docker build -t ${BACKEND_IMAGE}:${BUILD_NUMBER} .
+```ini
+[devops]
+<EC2_PUBLIC_IP> ansible_user=ubuntu ansible_ssh_private_key_file=~/.ssh/ec2-key.pem
+```
+
+### Check 2: Verify Ansible Playbook
+
+Ensure `ansible/deploy.yml` exists and contains deployment tasks for:
+- Installing Docker on target EC2
+- Copying docker-compose.yml
+- Pulling images from DockerHub
+- Starting containers
+
+### Check 3: Verify docker-compose.yml
+
+Ensure your docker-compose.yml includes:
+- MySQL database service
+- Backend service (depends on database)
+- Frontend service (depends on backend)
+
+---
+
+## Part 10: Test Pipeline
+
+### Step 1: Manual Build
+
+1. Go to your pipeline job
+2. Click "Build Now"
+3. Monitor Console Output
+
+### Step 2: Verify Deployment
+
+After build completes:
+
+```bash
+# SSH to application EC2
+ssh -i your-key.pem ubuntu@APP_EC2_IP
+
+# Check containers
+docker ps
+
+# Should see: mysql, backend, frontend containers running
+```
+
+### Step 3: Test Application
+
+- Frontend: `http://APP_EC2_IP`
+- Backend API: `http://APP_EC2_IP:8088/api`
+
+### Step 4: Test GitHub Webhook
+
+1. Make a change to your code
+2. Commit and push to GitHub:
+   ```bash
+   git add .
+   git commit -m "Test CI/CD pipeline"
+   git push origin main
+   ```
+3. Jenkins should automatically trigger build
+
+---
+
+## Troubleshooting
+
+### Issue: Jenkins can't use Docker
+
+```bash
+# Add jenkins to docker group
+sudo usermod -aG docker jenkins
+
+# Restart Jenkins
+sudo systemctl restart jenkins
+```
+
+### Issue: Ansible can't connect to EC2
+
+Check:
+1. SSH key path is correct in inventory.ini
+2. EC2 security group allows SSH from Jenkins EC2
+3. SSH key has correct permissions (chmod 400)
+
+### Issue: Containers not starting on application EC2
+
+```bash
+# Check Docker logs
+docker logs <container_name>
+
+# Check available memory
+free -h
+
+# May need to increase EC2 instance size
+```
+
+### Issue: GitHub webhook not triggering
+
+1. Check webhook delivery in GitHub Settings
+2. Verify Jenkins URL is accessible publicly
+3. Check Jenkins system log for webhook attempts
+
+---
+
+## Summary
+
+You now have:
+1. Jenkins server on separate EC2
+2. Automated CI/CD pipeline
+3. GitHub webhook triggering builds
+4. Docker images built and pushed to DockerHub
+5. Ansible deploying to application EC2
+6. Complete application stack running on EC2
+
+**Pipeline Flow:**
+```
+GitHub Push → Webhook → Jenkins → Build Images → Push to DockerHub → 
+Ansible Deploy → EC2 Containers → Running Application
+```
+
+---
+
+## Next Steps
+
+1. Add automated testing stage to pipeline
+2. Implement blue-green deployment
+3. Add monitoring with Prometheus/Grafana
+4. Setup backup for MySQL database
+5. Add SSL/HTTPS with Let's Encrypt
                         docker tag ${BACKEND_IMAGE}:${BUILD_NUMBER} ${BACKEND_IMAGE}:latest
                     '''
                 }

@@ -2,51 +2,55 @@ pipeline {
     agent any
     
     environment {
+        // DockerHub credentials
         DOCKER_USERNAME = 'thisarasamuditha'
         DOCKERHUB_CREDENTIALS = credentials('dockerhub-creds')
         
+        // Docker image names
         FRONTEND_IMAGE = "${DOCKER_USERNAME}/frontend"
         BACKEND_IMAGE = "${DOCKER_USERNAME}/backend"
         
+        // Build tag using Jenkins build number
         BUILD_TAG = "${env.BUILD_NUMBER}"
         
-        APP_DIR = '/home/ubuntu/app'
+        // AWS EC2 configuration
+        EC2_HOST = '43.205.116.130'
+        EC2_USER = 'ubuntu'
+        SSH_KEY = credentials('ec2-ssh-key')
     }
     
     triggers {
+        // Trigger pipeline on GitHub push
         githubPush()
     }
     
     stages {
-        stage('Checkout') {
+        // Stage 1: Pull code from GitHub
+        stage('Checkout Code') {
             steps {
-                echo '📥 Checking out source code from GitHub'
+                echo 'Step 1: Pulling source code from GitHub repository'
                 checkout scm
             }
         }
         
-        stage('Build Backend Image') {
+        // Stage 2: Build Docker images
+        stage('Build Docker Images') {
             steps {
-                echo '🏗️  Building Backend Docker image'
+                echo 'Step 2: Building Docker images for Frontend and Backend'
                 script {
+                    // Build backend image
                     dir('backend') {
                         sh """
                             docker build -t ${BACKEND_IMAGE}:latest .
                             docker tag ${BACKEND_IMAGE}:latest ${BACKEND_IMAGE}:${BUILD_TAG}
                         """
                     }
-                }
-            }
-        }
-        
-        stage('Build Frontend Image') {
-            steps {
-                echo '🏗️  Building Frontend Docker image'
-                script {
+                    
+                    // Build frontend image
                     dir('frontend') {
                         sh """
                             docker build -t ${FRONTEND_IMAGE}:latest \
-                              --build-arg VITE_API_BASE_URL=http://43.205.116.130:8088/api .
+                              --build-arg VITE_API_BASE_URL=http://${EC2_HOST}:8088/api .
                             docker tag ${FRONTEND_IMAGE}:latest ${FRONTEND_IMAGE}:${BUILD_TAG}
                         """
                     }
@@ -54,79 +58,76 @@ pipeline {
             }
         }
         
-        stage('Login to DockerHub') {
+        // Stage 3: Push images to DockerHub
+        stage('Push to DockerHub') {
             steps {
-                echo '🔐 Logging into DockerHub'
+                echo 'Step 3: Pushing Docker images to DockerHub'
                 sh """
                     echo ${DOCKERHUB_CREDENTIALS_PSW} | docker login -u ${DOCKERHUB_CREDENTIALS_USR} --password-stdin
-                """
-            }
-        }
-        
-        stage('Push Images') {
-            steps {
-                echo '📤 Pushing images to DockerHub'
-                sh """
+                    
                     docker push ${BACKEND_IMAGE}:latest
                     docker push ${BACKEND_IMAGE}:${BUILD_TAG}
                     docker push ${FRONTEND_IMAGE}:latest
                     docker push ${FRONTEND_IMAGE}:${BUILD_TAG}
+                    
+                    docker logout
                 """
             }
         }
         
-        stage('Deploy with Docker Compose') {
+        // Stage 4: Deploy to AWS EC2 using Ansible
+        stage('Deploy to AWS EC2') {
             steps {
-                echo '🚀 Deploying application with docker-compose'
+                echo 'Step 4: Deploying application to AWS EC2 using Ansible'
                 script {
-                    sh """
-                        cd ${APP_DIR}
-                        
-                        # Force remove old containers
-                        docker rm -f mysql_db backend frontend || true
-                        
-                        # Pull latest images
-                        docker compose pull
-                        
-                        # Start new containers
-                        docker compose up -d
-                        
-                        # Wait for MySQL to be healthy (60 seconds)
-                        echo "⏳ Waiting 60 seconds for MySQL initialization..."
-                        sleep 60
-                        
-                        # Verify all containers are running
-                        docker compose ps
-                        
-                        # Check MySQL is ready
-                        docker logs mysql_db | grep -i "ready for connections" || echo "⚠️  MySQL still initializing..."
-                        
-                        # Show memory usage
-                        free -h
-                    """
+                    dir('ansible') {
+                        sh """
+                            # Update inventory with EC2 IP
+                            sed -i 's/<EC2_PUBLIC_IP>/${EC2_HOST}/g' inventory.ini
+                            
+                            # Run Ansible playbook
+                            ansible-playbook -i inventory.ini deploy.yml \
+                              --extra-vars "docker_username=${DOCKER_USERNAME}" \
+                              --extra-vars "docker_password=${DOCKERHUB_CREDENTIALS_PSW}"
+                        """
+                    }
                 }
+            }
+        }
+        
+        // Stage 5: Verify deployment
+        stage('Verify Deployment') {
+            steps {
+                echo 'Step 5: Verifying application deployment'
+                sh """
+                    # Wait for services to stabilize
+                    sleep 30
+                    
+                    # Check if frontend is accessible
+                    curl -f http://${EC2_HOST} || echo 'Warning: Frontend not responding'
+                    
+                    # Check if backend is accessible
+                    curl -f http://${EC2_HOST}:8088/api || echo 'Warning: Backend not responding'
+                """
             }
         }
     }
     
     post {
         success {
-            echo '✅ Pipeline completed successfully!'
-            echo '🌐 Frontend: http://43.205.116.130'
-            echo '🔧 Backend API: http://43.205.116.130:8088/api'
-            echo '🗄️  Database: mysql://43.205.116.130:3306/taskdb'
+            echo 'Pipeline completed successfully'
+            echo "Frontend URL: http://${EC2_HOST}"
+            echo "Backend API URL: http://${EC2_HOST}:8088/api"
+            echo "Database: mysql://${EC2_HOST}:3306/taskdb"
         }
         failure {
-            echo '❌ Pipeline failed!'
+            echo 'Pipeline failed. Check logs for details.'
         }
         cleanup {
             script {
-                try {
-                    sh 'docker logout || true'
-                    sh 'docker image prune -f || true'
-                } catch (Exception e) {
-                    echo "⚠️  Cleanup failed: ${e.message}"
-                }
+                // Cleanup Docker credentials and unused images
+                sh 'docker logout || true'
+                sh 'docker image prune -f || true'
             }
         }
     }
