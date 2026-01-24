@@ -2,37 +2,37 @@ pipeline {
     agent any
     
     environment {
-        // DockerHub configuration
-        DOCKER_USERNAME = 'YOUR_DOCKERHUB_USERNAME'
-        DOCKERHUB_CREDENTIALS = credentials('dockerhub-credentials')
+        DOCKER_USERNAME = 'thisarasamuditha'  // Your DockerHub username
+        DOCKERHUB_CREDENTIALS = credentials('dockerhub-creds')
         
-        // Image names
         FRONTEND_IMAGE = "${DOCKER_USERNAME}/frontend"
         BACKEND_IMAGE = "${DOCKER_USERNAME}/backend"
         
-        // Build tag
         BUILD_TAG = "${env.BUILD_NUMBER}"
         
-        // EC2 configuration
-        EC2_IP = credentials('ec2-ip')
+        APP_DIR = '/home/ubuntu/app'  // docker-compose.yml location on EC2
+    }
+    
+    triggers {
+        githubPush()
     }
     
     stages {
         stage('Checkout') {
             steps {
-                echo '📥 Checking out code from GitHub...'
+                echo '📥 Checking out source code from GitHub'
                 checkout scm
             }
         }
         
         stage('Build Backend Image') {
             steps {
-                echo '🏗️  Building Spring Boot backend Docker image...'
-                dir('backend') {
-                    script {
+                echo '🏗️  Building Backend Docker image'
+                script {
+                    dir('backend') {
                         sh """
-                            docker build -t ${BACKEND_IMAGE}:${BUILD_TAG} .
-                            docker tag ${BACKEND_IMAGE}:${BUILD_TAG} ${BACKEND_IMAGE}:latest
+                            docker build -t ${BACKEND_IMAGE}:latest .
+                            docker tag ${BACKEND_IMAGE}:latest ${BACKEND_IMAGE}:${BUILD_TAG}
                         """
                     }
                 }
@@ -41,69 +41,66 @@ pipeline {
         
         stage('Build Frontend Image') {
             steps {
-                echo '🏗️  Building React frontend Docker image...'
-                dir('frontend') {
-                    script {
+                echo '🏗️  Building Frontend Docker image'
+                script {
+                    dir('frontend') {
                         sh """
-                            docker build -t ${FRONTEND_IMAGE}:${BUILD_TAG} \
-                              --build-arg VITE_API_BASE_URL=http://${EC2_IP}:8088/api .
-                            docker tag ${FRONTEND_IMAGE}:${BUILD_TAG} ${FRONTEND_IMAGE}:latest
+                            docker build -t ${FRONTEND_IMAGE}:latest \
+                              --build-arg VITE_API_BASE_URL=http://43.205.116.130:8088/api .
+                            docker tag ${FRONTEND_IMAGE}:latest ${FRONTEND_IMAGE}:${BUILD_TAG}
                         """
                     }
                 }
             }
         }
         
-        stage('Push Images to DockerHub') {
+        stage('Login to DockerHub') {
             steps {
-                echo '📤 Pushing Docker images to DockerHub...'
-                script {
-                    sh """
-                        echo ${DOCKERHUB_CREDENTIALS_PSW} | docker login -u ${DOCKERHUB_CREDENTIALS_USR} --password-stdin
-                        docker push ${BACKEND_IMAGE}:${BUILD_TAG}
-                        docker push ${BACKEND_IMAGE}:latest
-                        docker push ${FRONTEND_IMAGE}:${BUILD_TAG}
-                        docker push ${FRONTEND_IMAGE}:latest
-                        docker logout
-                    """
-                }
+                echo '🔐 Logging into DockerHub'
+                sh """
+                    echo ${DOCKERHUB_CREDENTIALS_PSW} | docker login -u ${DOCKERHUB_CREDENTIALS_USR} --password-stdin
+                """
             }
         }
         
-        stage('Update docker-compose.yml') {
+        stage('Push Images') {
             steps {
-                echo '📝 Updating docker-compose.yml with DockerHub username...'
-                script {
-                    sh """
-                        sed -i 's|YOUR_DOCKERHUB_USERNAME|${DOCKER_USERNAME}|g' docker-compose.yml
-                    """
-                }
+                echo '📤 Pushing images to DockerHub'
+                sh """
+                    docker push ${BACKEND_IMAGE}:latest
+                    docker push ${BACKEND_IMAGE}:${BUILD_TAG}
+                    docker push ${FRONTEND_IMAGE}:latest
+                    docker push ${FRONTEND_IMAGE}:${BUILD_TAG}
+                """
             }
         }
         
-        stage('Deploy to EC2 with Ansible') {
+        stage('Deploy with Docker Compose') {
             steps {
-                echo '🚀 Deploying application to EC2 using Ansible...'
-                dir('ansible') {
-                    script {
-                        // Update inventory with current EC2 IP
-                        sh """
-                            sed -i 's|<EC2_PUBLIC_IP>|${EC2_IP}|g' inventory.ini
-                        """
+                echo '🚀 Deploying application with docker-compose'
+                script {
+                    sh """
+                        # Navigate to app directory
+                        cd ${APP_DIR}
                         
-                        // Run Ansible playbook
-                        withCredentials([
-                            usernamePassword(credentialsId: 'dockerhub-credentials', 
-                                           usernameVariable: 'DOCKER_USERNAME', 
-                                           passwordVariable: 'DOCKER_PASSWORD')
-                        ]) {
-                            sh """
-                                export DOCKER_USERNAME=${DOCKER_USERNAME}
-                                export DOCKER_PASSWORD=${DOCKER_PASSWORD}
-                                ansible-playbook -i inventory.ini deploy.yml
-                            """
-                        }
-                    }
+                        # Pull latest images
+                        docker compose pull
+                        
+                        # Stop and remove old containers
+                        docker compose down
+                        
+                        # Start new containers
+                        docker compose up -d
+                        
+                        # Wait for containers
+                        sleep 10
+                        
+                        # Verify all containers are running
+                        docker compose ps
+                        
+                        # Check MySQL is ready
+                        docker logs mysql_db | grep -i "ready for connections" || echo "MySQL still initializing..."
+                    """
                 }
             }
         }
@@ -112,18 +109,16 @@ pipeline {
     post {
         success {
             echo '✅ Pipeline completed successfully!'
-            echo "🌐 Frontend URL: http://${EC2_IP}"
-            echo "🔧 Backend API: http://${EC2_IP}:8088"
+            echo '🌐 Frontend: http://43.205.116.130'
+            echo '🔧 Backend: http://43.205.116.130:8088/api'
+            sh 'docker logout'
         }
         failure {
-            echo '❌ Pipeline failed! Check logs for details.'
+            echo '❌ Pipeline failed!'
+            sh 'docker logout || true'
         }
         always {
-            echo '🧹 Cleaning up local Docker images...'
-            sh """
-                docker rmi ${BACKEND_IMAGE}:${BUILD_TAG} || true
-                docker rmi ${FRONTEND_IMAGE}:${BUILD_TAG} || true
-            """
+            sh 'docker image prune -f || true'
         }
     }
 }
