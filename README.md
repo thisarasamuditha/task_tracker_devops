@@ -1558,6 +1558,7 @@ This project is for educational purposes as part of a university DevOps course.
 ---
 
 ## Author
-- Thisara Samuditha BSc (Hons) in Computer Engineering (UG)
-- UOR
+- Thisara Samuditha 
+- BSc (Hons) in Computer Engineering (UG)
+- UOR 
 
