@@ -99,7 +99,7 @@ pipeline {
                             sh """
                                 ansible-playbook -i inventory.ini deploy.yml \
                                     --private-key=\${SSH_KEY_FILE} \
-                                    --extra-vars "dockerhub_username=${DOCKERHUB_USERNAME}"
+                                    --extra-vars "dockerhub_username=${DOCKERHUB_USERNAME} ansible_host=${EC2_HOST}"
                             """
                         }
                     }
