@@ -1,6 +1,5 @@
 package com.thisara.demo.entity;
 
-import com.mysql.cj.protocol.ColumnDefinition;
 import jakarta.persistence.*;
 
 import java.time.LocalDate;
