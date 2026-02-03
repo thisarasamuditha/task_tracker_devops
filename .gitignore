@@ -10,6 +10,7 @@ terraform/*.pem
 
 # Ansible
 ansible/*.retry
+ansible/.env.example
 
 # Docker
 .dockerignore
@@ -30,6 +31,7 @@ Thumbs.db
 .env
 .env.local
 .env.*.local
+
 
 # Database
 *.sql
