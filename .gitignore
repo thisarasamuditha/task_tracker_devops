@@ -10,7 +10,6 @@ terraform/*.pem
 
 # Ansible
 ansible/*.retry
-ansible/.env.example
 
 # Docker
 .dockerignore
