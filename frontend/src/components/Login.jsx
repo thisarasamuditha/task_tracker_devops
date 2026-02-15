@@ -63,7 +63,7 @@ const Login = () => {
     <div className="min-h-screen w-full flex items-center justify-center bg-background p-4 font-sans">
       <div className="bg-white p-8 md:p-10 rounded-lg shadow-lg w-full max-w-md mx-auto">
         <h1 className="text-3xl font-display font-bold mb-6 text-center text-text tracking-tight">
-          Task Manager
+          Thisara Samuditha 
         </h1>
         <p className="text-center text-muted mb-8 font-medium">
           Login to your account
@@ -112,7 +112,7 @@ const Login = () => {
           </div>
           <button
             type="submit"
-            className="w-full bg-pink-500 text-white py-3 rounded-lg font-semibold hover:bg-pink-600 transition-colors font-medium text-base shadow-md"
+            className="w-full bg-primary text-white py-3 rounded-lg font-semibold hover:bg-primary/90 transition-colors font-medium text-base shadow-md"
           // bg-pink-500
           >
             Login
