@@ -41,7 +41,11 @@ export default function Sidebar({ variant = "desktop", onNavigate }) {
     >
       <div className="w-full p-5 flex flex-col">
         <div className="flex items-center gap-3 px-3 py-2">
-          <div className="w-11 h-11 rounded-2xl bg-gradient-to-br from-primary to-secondary shadow-lg" />
+          <img
+            src="/task.png"
+            alt="Task Manager"
+            className="w-11 h-11 rounded-2xl shadow-lg object-cover"
+          />
           <div className="min-w-0">
             <p className="font-display font-bold text-text dark:text-textDark leading-5 truncate">
               Task Manager
